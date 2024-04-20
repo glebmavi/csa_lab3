@@ -1,13 +1,12 @@
 import os
 import sys
-from src.asm import isa
+from src.asm.isa import *
 
 INPUT_EXTENSION = ".asmm"
 OUTPUT_EXTENSION = ".json"
 
 labels = {}
 variables = {}
-start_address = -1
 
 
 class Instructions:
@@ -49,7 +48,7 @@ class Instruction:
     value: Value of data or address to jump. Otherwise, 0
     relative: If the value is a relative address
     """
-    def __init__(self, index, opcode: isa.OpCode, value, relative=None):
+    def __init__(self, index, opcode: OpCode, value, relative=None):
         self.index = index
         self.opcode = opcode
         self.value = value
@@ -109,7 +108,7 @@ def section_split(source):
 def build_data(data, instructions: Instructions):
     """
     Builds the data section of the code by adding NOP instructions with the data values to the instructions list of the
-    Instructions object. The added values are stored in the variables dictionary.
+    Instructions object. The added values are stored in the "variables" dictionary.
     :param data: List of data lines
     :param instructions: Instructions object
     """
@@ -125,10 +124,10 @@ def build_data(data, instructions: Instructions):
                     value = value[1:-1]
                     for i in range(len(value)):
                         variables[line[0].strip()] = instructions.last_address
-                        instructions.append(Instruction(instructions.last_address, isa.OpCode["NOP"], value[i]))
+                        instructions.append(Instruction(instructions.last_address, OpCode["NOP"], value[i]))
                 else:
                     variables[line[0].strip()] = instructions.last_address
-                    instructions.append(Instruction(instructions.last_address, isa.OpCode["NOP"], value))
+                    instructions.append(Instruction(instructions.last_address, OpCode["NOP"], value))
             else:
                 raise ValueError(f"Invalid data line: {line}")
 
@@ -141,8 +140,8 @@ def build_code(code, instructions: Instructions):
     :param code: List of code lines
     :param instructions: Instructions object
     """
-    global start_address
     start_label_found = False
+    start_address = -1
     for line in code:
         if line.__contains__("index"):
             instructions.last_address = int(line.split(" ")[1])
@@ -155,15 +154,15 @@ def build_code(code, instructions: Instructions):
                     start_address = instructions.last_address
                 labels[label] = instructions.last_address
             else:
-                if line[0] in isa.OpCode.__members__:
-                    opcode = isa.OpCode[line[0]]
+                if line[0] in OpCode.__members__:
+                    opcode = OpCode[line[0]]
                     if len(line) == 2:
-                        if line[1] in variables and opcode.get_type() == isa.CommandTypes.DATA:
+                        if line[1] in variables and opcode.get_type() == CommandTypes.DATA:
                             instructions.append(
                                 Instruction(instructions.last_address, opcode, variables[line[1]], relative=False))
-                        elif line[1] in labels and opcode.get_type() == isa.CommandTypes.JUMP:
+                        elif line[1] in labels and opcode.get_type() == CommandTypes.JUMP:
                             instructions.append(Instruction(instructions.last_address, opcode, labels[line[1]]))
-                        elif line[1].__contains__("$") and opcode.get_type() == isa.CommandTypes.DATA:
+                        elif line[1].__contains__("$") and opcode.get_type() == CommandTypes.DATA:
                             var = line[1][1:]
                             instructions.append(
                                 Instruction(instructions.last_address, opcode, variables[var], relative=True))
@@ -178,6 +177,8 @@ def build_code(code, instructions: Instructions):
                     raise ValueError(f"Invalid command: {line[0]}")
     if not start_label_found:
         raise ValueError("Start label not found")
+
+    return start_address
 
 
 def json_builder(instructions: Instructions):
@@ -195,19 +196,19 @@ def json_builder(instructions: Instructions):
     return result
 
 
-def translate(source):
+def translate(asmm):
     """
     Translates the source code into a JSON string
-    :param source: Source code
+    :param asmm: Source code
     :return: JSON string
     """
-    result = trimmer(source)
+    result = trimmer(asmm)
     data, code = section_split(result)
     ins = Instructions()
     build_data(data, ins)
-    build_code(code, ins)
+    start_address = build_code(code, ins)
     result = json_builder(ins)
-    return result
+    return result, start_address
 
 
 def write_code(target, start_address, code):
@@ -242,7 +243,7 @@ def main(source, target):
 
     with open(source, encoding="utf-8") as file:
         code_source = file.read().split("\n")
-    code = translate(code_source)
+    code, start_address = translate(code_source)
     if len(code) == 0:
         raise ValueError("No code to translate")
     write_code(target, start_address, code)
@@ -250,5 +251,5 @@ def main(source, target):
 
 if __name__ == "__main__":
     assert len(sys.argv) == 3, "Wrong arguments: translator.py <source_file> <target_file>"
-    _, source, target = sys.argv
-    main(source, target)
+    _, source_file, target_file = sys.argv
+    main(source_file, target_file)

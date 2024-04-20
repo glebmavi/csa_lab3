@@ -6,7 +6,8 @@ SYS_BITS = 32
 ADDRESS_RANGE = 11
 VALUE_RANGE = SYS_BITS - 1
 MAX_ADDRESS = 1 << ADDRESS_RANGE
-MAX_VALUE = 1 << VALUE_RANGE
+MIN_VALUE = -(1 << VALUE_RANGE)
+MAX_VALUE = (1 << VALUE_RANGE) - 1
 
 
 class CommandTypes(Enum):
@@ -29,8 +30,6 @@ class OpCode(OperationInfo, Enum):
     DEC = OperationInfo("decrement", CommandTypes.NOP)
     ADD = OperationInfo("add", CommandTypes.DATA)
     SUB = OperationInfo("subtract", CommandTypes.DATA)
-    MUL = OperationInfo("multiply", CommandTypes.DATA)
-    DIV = OperationInfo("divide", CommandTypes.DATA)
     CMP = OperationInfo("compare", CommandTypes.DATA)
     JMP = OperationInfo("jump", CommandTypes.JUMP)
     SHL = OperationInfo("shift_left", CommandTypes.NOP)
