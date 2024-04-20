@@ -1,0 +1,13 @@
+section .data ; data section
+index 10
+A: 5
+B: 3
+C: 0 ; result
+
+section .code ; code section
+index 100
+_start    ; entry point
+    LOAD A
+    ADD B
+    SAVE C
+    HLT
