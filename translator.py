@@ -6,7 +6,7 @@ INPUT_EXTENSION = ".asmm"
 OUTPUT_EXTENSION = ".json"
 
 labels = {}
-variables = {}
+variables = {'IN': IN_ADDR, 'OUT': OUT_ADDR}
 
 
 class Instructions:
@@ -31,6 +31,8 @@ class Instructions:
             raise ValueError(f"Invalid instruction: {instruction}")
         if instruction.index in [i.index for i in self.list]:
             raise ValueError(f"Memory already allocated: {instruction.index}")
+        if instruction.index > MAX_ADDRESS - 2:  # -2 to avoid stack and input/output addresses
+            raise ValueError(f"Memory address out of range: {instruction.index}")
         self.list.append(instruction)
         self.last_address += 1
 
@@ -119,6 +121,8 @@ def build_data(data, instructions: Instructions):
         else:
             line = line.split(":")
             if len(line) == 2:
+                if line[0] == "IN" or line[0] == "OUT":
+                    raise ValueError(f"Cannot use reserved variable name: {line[0]}")
                 value = line[1].strip()
                 if value.__contains__("'"):
                     value = value[1:-1]

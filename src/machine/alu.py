@@ -2,6 +2,14 @@ from src.asm.isa import *
 
 
 class ALU:
+    """
+    Arithmetic Logic Unit
+
+    Attributes:
+    N: Negative Flag
+    Z: Zero Flag
+    C: Carry Flag
+    """
 
     def __init__(self):
         self.N = False  # Negative Flag
@@ -40,5 +48,3 @@ class ALU:
         result = a >> 1
         self.set_flags(result)
         return result
-
-
