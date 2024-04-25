@@ -1,13 +1,15 @@
 section .data ; data section
 index 10
 A: 5
-B: 3
+B: 10
 C: 0 ; result
 
 section .code ; code section
 index 100
 _start    ; entry point
+    ;CLR ; clear the accumulator
     LOAD A
-    ADD B
-    SAVE C
+    ADD $B
+    SAVE OUT
     HLT
+_int ; no need to implement

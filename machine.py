@@ -1,8 +1,16 @@
 import sys
+from src.machine.control_unit import ControlUnit
+from src.machine.data_path import DataPath
 
 
 def main(code_file, input_file):
-    ...
+    with open(code_file) as file:
+        code = eval(file.read())
+    with open(input_file) as file:
+        input_data = eval(file.read())
+    data_path = DataPath()
+    control_unit = ControlUnit(data_path, code, input_data)
+    control_unit.run()
 
 
 if __name__ == "__main__":

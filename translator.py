@@ -3,7 +3,7 @@ import sys
 from src.asm.isa import *
 
 INPUT_EXTENSION = ".asmm"
-OUTPUT_EXTENSION = ".json"
+OUTPUT_EXTENSION = ".asmx"
 
 labels = {}
 variables = {'IN': IN_ADDR, 'OUT': OUT_ADDR}
@@ -31,7 +31,7 @@ class Instructions:
             raise ValueError(f"Invalid instruction: {instruction}")
         if instruction.index in [i.index for i in self.list]:
             raise ValueError(f"Memory already allocated: {instruction.index}")
-        if instruction.index > MAX_ADDRESS - 2:  # -2 to avoid stack and input/output addresses
+        if instruction.index > MAX_ADDRESS - 3:  # to avoid stack and input/output addresses
             raise ValueError(f"Memory address out of range: {instruction.index}")
         self.list.append(instruction)
         self.last_address += 1
@@ -57,9 +57,11 @@ class Instruction:
         self.relative = relative
 
     def __str__(self):
-        base_str = f"\"index\": {self.index}, \"opcode\": \"{self.opcode}\", \"value\": {self.value}"
+        base_str = (f"\"index\": {self.index:4}, "
+                    f"\"opcode\": \"{self.opcode:4}\", "
+                    f"\"value\": {self.value:10}")
         if self.relative is not None:
-            base_str += f", \"relative\": {str(self.relative).lower()}"
+            base_str += f", \"relative\": {str(self.relative):5}"
         return base_str
 
 
@@ -73,7 +75,7 @@ def trimmer(code):
     for line in code:
         if not line:
             continue
-        if line.__contains__(";"):
+        if ";" in line:
             line = line[:line.index(";")]
         line = line.strip()
         if line:
@@ -92,11 +94,11 @@ def section_split(source):
     in_data = False
     in_code = False
     for line in source:
-        if line.__contains__("section .data"):
+        if "section .data" in line:
             in_data = True
             in_code = False
             continue
-        if line.__contains__("section .code"):
+        if "section .code" in line:
             in_data = False
             in_code = True
             continue
@@ -115,7 +117,7 @@ def build_data(data, instructions: Instructions):
     :param instructions: Instructions object
     """
     for line in data:
-        if line.__contains__("index"):
+        if "index" in line:
             instructions.last_address = int(line.split(" ")[1])
 
         else:
@@ -124,11 +126,15 @@ def build_data(data, instructions: Instructions):
                 if line[0] == "IN" or line[0] == "OUT":
                     raise ValueError(f"Cannot use reserved variable name: {line[0]}")
                 value = line[1].strip()
-                if value.__contains__("'"):
+                if "'" in value:
                     value = value[1:-1]
+                    variables[line[0].strip()] = instructions.last_address
                     for i in range(len(value)):
-                        variables[line[0].strip()] = instructions.last_address
-                        instructions.append(Instruction(instructions.last_address, OpCode["NOP"], value[i]))
+                        if value[i] == value[-1]:
+                            instructions.append(Instruction(instructions.last_address, OpCode["NOP"], f"'{value[i]}'"))
+                            instructions.append(Instruction(instructions.last_address, OpCode["NOP"], f"'\\0'"))
+                        else:
+                            instructions.append(Instruction(instructions.last_address, OpCode["NOP"], f"'{value[i]}'"))
                 else:
                     variables[line[0].strip()] = instructions.last_address
                     instructions.append(Instruction(instructions.last_address, OpCode["NOP"], value))
@@ -145,17 +151,23 @@ def build_code(code, instructions: Instructions):
     :param instructions: Instructions object
     """
     start_label_found = False
+    interrupt_label_found = False
     start_address = -1
+    interrupt_address = -1
     for line in code:
-        if line.__contains__("index"):
+        if "index" in line:
             instructions.last_address = int(line.split(" ")[1])
         else:
             line = line.split()
-            if line[0].__contains__("_"):
+            if "_" in line[0]:
                 label = line[0][1:]
                 if label == "start":
                     start_label_found = True
                     start_address = instructions.last_address
+                elif label == "int":
+                    interrupt_label_found = True
+                    interrupt_address = instructions.last_address
+
                 labels[label] = instructions.last_address
             else:
                 if line[0] in OpCode.__members__:
@@ -166,7 +178,7 @@ def build_code(code, instructions: Instructions):
                                 Instruction(instructions.last_address, opcode, variables[line[1]], relative=False))
                         elif line[1] in labels and opcode.get_type() == CommandTypes.JUMP:
                             instructions.append(Instruction(instructions.last_address, opcode, labels[line[1]]))
-                        elif line[1].__contains__("$") and opcode.get_type() == CommandTypes.DATA:
+                        elif "$" in line[1] and opcode.get_type() == CommandTypes.DATA:
                             var = line[1][1:]
                             instructions.append(
                                 Instruction(instructions.last_address, opcode, variables[var], relative=True))
@@ -181,8 +193,10 @@ def build_code(code, instructions: Instructions):
                     raise ValueError(f"Invalid command: {line[0]}")
     if not start_label_found:
         raise ValueError("Start label not found")
+    if not interrupt_label_found:
+        raise ValueError("Interrupt label not found")
 
-    return start_address
+    return start_address, interrupt_address
 
 
 def json_builder(instructions: Instructions):
@@ -210,12 +224,12 @@ def translate(asmm):
     data, code = section_split(result)
     ins = Instructions()
     build_data(data, ins)
-    start_address = build_code(code, ins)
+    start_address, interrupt_address = build_code(code, ins)
     result = json_builder(ins)
-    return result, start_address
+    return result, start_address, interrupt_address
 
 
-def write_code(target, start_address, code):
+def write_code(target, start_address, code, interrupt_address):
     """
     Writes the JSON string to a file
     :param target: Target file
@@ -225,6 +239,7 @@ def write_code(target, start_address, code):
     with open(target, "w", encoding="utf-8") as file:
         file.write("[\n")
         file.write("""{"start_address": """ + str(start_address) + " },\n")
+        file.write("""{"interrupt_address": """ + str(interrupt_address) + " },\n")
         for line in code:
             file.write(f"{line}\n")
         file.write("]\n")
@@ -247,10 +262,10 @@ def main(source, target):
 
     with open(source, encoding="utf-8") as file:
         code_source = file.read().split("\n")
-    code, start_address = translate(code_source)
+    code, start_address, interrupt_address = translate(code_source)
     if len(code) == 0:
         raise ValueError("No code to translate")
-    write_code(target, start_address, code)
+    write_code(target, start_address, code, interrupt_address)
 
 
 if __name__ == "__main__":

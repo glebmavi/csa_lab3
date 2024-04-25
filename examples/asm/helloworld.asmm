@@ -1,3 +1,17 @@
 section .data
 index 0
-TODO
+hello: 'Hello, World!'
+count: 0
+
+section .code
+_start
+    LOAD $count
+_loop
+    SAVE OUT
+    LOAD count
+    INC
+    SAVE count
+    LOAD $count
+    JMNZ loop
+    HLT
+_int

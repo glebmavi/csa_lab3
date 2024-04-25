@@ -10,6 +10,8 @@ MIN_VALUE = -(1 << VALUE_RANGE)
 MAX_VALUE = (1 << VALUE_RANGE) - 1
 IN_ADDR = MAX_ADDRESS - 1
 OUT_ADDR = MAX_ADDRESS
+INTERRUPT_START = MAX_ADDRESS - 2
+STACK_START = MAX_ADDRESS - 3
 
 
 class CommandTypes(Enum):
@@ -24,28 +26,28 @@ class OperationInfo(NamedTuple):
 
 
 class OpCode(OperationInfo, Enum):
-    LOAD = OperationInfo("load", CommandTypes.DATA)
-    SAVE = OperationInfo("save", CommandTypes.DATA)
-    PUSH = OperationInfo("push", CommandTypes.NOP)
-    POP = OperationInfo("pop", CommandTypes.NOP)
-    INC = OperationInfo("increment", CommandTypes.NOP)
-    DEC = OperationInfo("decrement", CommandTypes.NOP)
-    ADD = OperationInfo("add", CommandTypes.DATA)
-    SUB = OperationInfo("subtract", CommandTypes.DATA)
-    CMP = OperationInfo("compare", CommandTypes.DATA)
-    JMP = OperationInfo("jump", CommandTypes.JUMP)
-    SHL = OperationInfo("shift_left", CommandTypes.NOP)
-    SHR = OperationInfo("shift_right", CommandTypes.NOP)
-    JMN = OperationInfo("jump_if_negative", CommandTypes.JUMP)
-    JMNN = OperationInfo("jump_if_not_negative", CommandTypes.JUMP)
-    JMZ = OperationInfo("jump_if_zero", CommandTypes.JUMP)
-    JMZN = OperationInfo("jump_if_not_zero", CommandTypes.JUMP)
-    JMC = OperationInfo("jump_if_carry", CommandTypes.JUMP)
-    JMNC = OperationInfo("jump_if_not_carry", CommandTypes.JUMP)
-    CLR = OperationInfo("clear", CommandTypes.NOP)
-    HLT = OperationInfo("halt", CommandTypes.NOP)
-    IRET = OperationInfo("interrupt_return", CommandTypes.NOP)
-    NOP = OperationInfo("no_operation", CommandTypes.NOP)
+    LOAD = OperationInfo("LOAD", CommandTypes.DATA)
+    SAVE = OperationInfo("SAVE", CommandTypes.DATA)
+    PUSH = OperationInfo("PUSH", CommandTypes.NOP)
+    POP = OperationInfo("POP", CommandTypes.NOP)
+    INC = OperationInfo("INC", CommandTypes.NOP)
+    DEC = OperationInfo("DEC", CommandTypes.NOP)
+    ADD = OperationInfo("ADD", CommandTypes.DATA)
+    SUB = OperationInfo("SUB", CommandTypes.DATA)
+    CMP = OperationInfo("CMP", CommandTypes.DATA)
+    JMP = OperationInfo("JMP", CommandTypes.JUMP)
+    SHL = OperationInfo("SHL", CommandTypes.NOP)
+    SHR = OperationInfo("SHR", CommandTypes.NOP)
+    JMN = OperationInfo("JMN", CommandTypes.JUMP)
+    JMNN = OperationInfo("JMNN", CommandTypes.JUMP)
+    JMZ = OperationInfo("JMZ", CommandTypes.JUMP)
+    JMNZ = OperationInfo("JMNZ", CommandTypes.JUMP)
+    JMC = OperationInfo("JMC", CommandTypes.JUMP)
+    JMNC = OperationInfo("JMNC", CommandTypes.JUMP)
+    CLR = OperationInfo("CLR", CommandTypes.NOP)
+    HLT = OperationInfo("HLT", CommandTypes.NOP)
+    IRET = OperationInfo("IRET", CommandTypes.NOP)
+    NOP = OperationInfo("NOP", CommandTypes.NOP)
 
     def get_type(self):
         return self.value[1]

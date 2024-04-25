@@ -1,0 +1,6 @@
+section .data
+hello: 'Hello, '
+exclamation: '!'
+section .code
+_start
+    HTL
