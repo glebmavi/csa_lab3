@@ -1,0 +1,49 @@
+section .data
+
+first: 1 ; mem 0
+second: 2 ; mem 1
+next: 2 ; mem 2
+summ: 0 ; mem 3
+limit: 4000000 ; mem 4
+
+section .code
+
+_iteration
+    JMP 200 ; address of _start
+
+_print
+    LOAD summ ; \
+    SAVE OUT ;   } print(summ)
+    HLT ;       /
+
+
+_check
+    LOAD second ; \
+    CMP limit ;   / if second > limit
+
+    JMNN print
+
+    JMP iteration
+
+_sum
+    LOAD summ ;  \
+    ADD second ;  } summ += second
+    SAVE summ ;  /
+    JMP check
+
+index 200
+_start
+    LOAD next ;   \
+    SAVE second ; / second = next
+    LOAD first ;  \
+    ADD second ;   } next = first + second
+    SAVE next ;   /
+
+    LOAD second ; \
+    SAVE first ;  / first = second
+
+    SHR ;      \
+    JMNC sum ; / if second % 2 == 0: sum()
+    JMP check
+
+_int

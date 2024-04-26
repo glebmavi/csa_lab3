@@ -9,7 +9,7 @@ index 100
 _start    ; entry point
     ;CLR ; clear the accumulator
     LOAD A
-    ADD $B
-    SAVE OUT
+    ADD $B  ; adds the value of A with the reference of B
+    SAVE OUT ; expected to be 10
     HLT
 _int ; no need to implement

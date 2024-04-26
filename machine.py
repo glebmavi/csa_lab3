@@ -9,8 +9,8 @@ def main(code_file, input_file):
     with open(input_file) as file:
         input_data = eval(file.read())
     data_path = DataPath()
-    control_unit = ControlUnit(data_path, code, input_data)
-    control_unit.run()
+    control_unit = ControlUnit(data_path, code, input_data, 2000)
+    print(control_unit.run())
 
 
 if __name__ == "__main__":

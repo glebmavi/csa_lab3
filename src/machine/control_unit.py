@@ -80,6 +80,8 @@ class ControlUnit:
         elif self.interrupt == InterruptType.NONE:
             self.run()
 
+        return self.data_path.output
+
     def execute_instruction(self):
         info = ""
         try:
@@ -87,6 +89,7 @@ class ControlUnit:
             if opcode == OpCode.LOAD:
                 self.data_path.alu.clr()
                 self.data_path.acc = self.data_path.dr.value
+                self.data_path.alu.set_flags(self.data_path.acc)
                 info = "LOAD: DR -> ACC"
             elif opcode == OpCode.SAVE:
                 self.data_path.memory[self.data_path.ar] = (
@@ -103,6 +106,7 @@ class ControlUnit:
             elif opcode == OpCode.POP:
                 self.data_path.acc = self.data_path.memory[self.data_path.sp].value
                 self.data_path.sp += 1
+                self.data_path.alu.set_flags(self.data_path.acc)
                 info = "POP: mem[SP] -> ACC, SP + 1 -> SP"
             elif opcode == OpCode.INC:
                 self.data_path.acc = self.data_path.alu.add(self.data_path.acc, 1)
@@ -120,7 +124,7 @@ class ControlUnit:
                 self.data_path.alu.cmp(self.data_path.acc, self.data_path.dr.value)
                 info = "CMP: ACC - DR -> PS"
             elif opcode == OpCode.JMP:
-                self.data_path.ip = self.data_path.dr.value
+                self.data_path.ip = self.data_path.dr.index
                 info = "JMP: DR -> IP"
             elif opcode == OpCode.SHL:
                 self.data_path.acc = self.data_path.alu.shl(self.data_path.acc)
@@ -129,27 +133,27 @@ class ControlUnit:
                 self.data_path.acc = self.data_path.alu.shr(self.data_path.acc)
                 info = "SHR: ACC >> 1 -> ACC"
             elif opcode == OpCode.JMN:
-                if self.data_path.alu.get_flags_as_int(self.data_path.acc) >= 4:
+                if self.data_path.alu.get_flags_as_int() >= 4:
                     self.data_path.ip = self.data_path.dr.index
                     info = "JMN: N: DR -> IP"
             elif opcode == OpCode.JMNN:
-                if self.data_path.alu.get_flags_as_int(self.data_path.acc) < 4:
+                if self.data_path.alu.get_flags_as_int() < 4:
                     self.data_path.ip = self.data_path.dr.index
                     info = "JMNN: NOT N: DR -> IP"
             elif opcode == OpCode.JMZ:
-                if self.data_path.alu.get_flags_as_int(self.data_path.acc) in [2, 3, 7]:
+                if self.data_path.alu.get_flags_as_int() in [2, 3, 7]:
                     self.data_path.ip = self.data_path.dr.index
                     info = "JMZ: Z: DR -> IP"
             elif opcode == OpCode.JMNZ:
-                if self.data_path.alu.get_flags_as_int(self.data_path.acc) not in [2, 3, 7]:
+                if self.data_path.alu.get_flags_as_int() not in [2, 3, 7]:
                     self.data_path.ip = self.data_path.dr.index
                     info = "JMNZ: NOT Z: DR -> IP"
             elif opcode == OpCode.JMC:
-                if self.data_path.alu.get_flags_as_int(self.data_path.acc) in [1, 3, 5, 7]:
+                if self.data_path.alu.get_flags_as_int() in [1, 3, 5, 7]:
                     self.data_path.ip = self.data_path.dr.index
                     info = "JMC: C: DR -> IP"
             elif opcode == OpCode.JMNC:
-                if self.data_path.alu.get_flags_as_int(self.data_path.acc) not in [1, 3, 5, 7]:
+                if self.data_path.alu.get_flags_as_int() not in [1, 3, 5, 7]:
                     self.data_path.ip = self.data_path.dr.index
                     info = "JMNC: NOT C: DR -> IP"
             elif opcode == OpCode.CLR:
@@ -170,5 +174,5 @@ class ControlUnit:
             logger.error(e)
             self.interrupt = InterruptType.ERROR
 
-        self.data_path.ps = self.data_path.alu.get_flags_as_int(self.data_path.acc)
+        self.data_path.ps = self.data_path.alu.get_flags_as_int()
         return info

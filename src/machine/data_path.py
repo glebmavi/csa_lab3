@@ -15,7 +15,7 @@ class DataPath:
         self.dr: int | Instruction = 0  # Data Register
         self.sp: int = STACK_START  # Stack Pointer
         self.cr: Instruction = Instruction(0, OpCode.NOP, 0)  # Command Register
-        self.ps: int = self.alu.get_flags_as_int(self.acc)  # Program Status
+        self.ps: int = self.alu.get_flags_as_int()  # Program Status
         self.output = []
 
     def __str__(self):

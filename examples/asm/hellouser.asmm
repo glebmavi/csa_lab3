@@ -1,6 +1,34 @@
 section .data
-hello: 'Hello, '
+hello: 'Hello '
 exclamation: '!'
+count: 0
+
 section .code
+
+_excl
+    LOAD exclamation
+    SAVE OUT
+    HLT
+
+_userloop
+    JMP userloop
+
+_helloloop
+    SAVE OUT
+    LOAD count
+    INC
+    SAVE count
+    LOAD $count
+    JMNZ helloloop
+    CLR
+    JMP userloop
+
 _start
-    HTL
+    LOAD $count
+    JMP helloloop
+
+_int
+    LOAD IN
+    JMZ excl
+    SAVE OUT
+    IRET
