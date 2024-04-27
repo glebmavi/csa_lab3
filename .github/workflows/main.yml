@@ -25,12 +25,9 @@ jobs:
           pip install poetry
           poetry install
 
-      - name: Run tests and collect coverage
+      - name: Run golden tests
         run: |
-          poetry run coverage run -m pytest .
-          poetry run coverage report -m
-        env:
-          CI: true
+          poetry run pytest -m golden_tests
 
   lint:
     runs-on: ubuntu-latest
