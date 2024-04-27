@@ -7,9 +7,9 @@ from translator import Instruction
 
 
 class DataPath:
-    alu = ALU()
 
     def __init__(self):
+        self.alu = ALU()
         self.memory = [Instruction(i, OpCode.NOP, 0) for i in range(MAX_ADDRESS + 1)]
         self.acc: int | str = 0  # Accumulator
         self.ar: int = 0  # Address Register
