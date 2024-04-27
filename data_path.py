@@ -1,10 +1,11 @@
-from src.machine.alu import ALU
-from src.asm.isa import *
+from __future__ import annotations
+
+from alu import ALU
+from isa import INTERRUPT_START, MAX_ADDRESS, STACK_START, OpCode
 from translator import Instruction
 
 
 class DataPath:
-    memory = []
     alu = ALU()
 
     def __init__(self):
@@ -34,13 +35,13 @@ class DataPath:
         Load a program into memory.
         Program is a list of Instruction objects and a start address at ht beginning.
         """
-        self.ip = program[0]['start_address']
-        self.memory[INTERRUPT_START] = program[1]['interrupt_address']
+        self.ip = program[0]["start_address"]
+        self.memory[INTERRUPT_START] = program[1]["interrupt_address"]
         for instruction in program[2:]:
-            index: int = instruction['index']
-            opcode = OpCode[instruction['opcode'].strip().upper()]
-            value = instruction['value']
-            relative = instruction.get('relative', None)
+            index: int = instruction["index"]
+            opcode = OpCode[instruction["opcode"].strip().upper()]
+            value = instruction["value"]
+            relative = instruction.get("relative", None)
             self.memory[index] = Instruction(index, opcode, value, relative)
 
     def fetch_instruction(self):
@@ -51,7 +52,7 @@ class DataPath:
         try:
             self.dr = self.memory[self.ar]
         except IndexError:
-            raise IndexError(f"Instruction Pointer out of bounds: {self.ip}")
+            raise InstructionPointerError(self.ip)
         self.cr = self.dr  # Command Register will hold the instruction
         self.ip += 1
 
@@ -64,9 +65,21 @@ class DataPath:
         try:
             self.dr = self.memory[self.ar]
         except IndexError:
-            raise IndexError(f"Address Register out of bounds: {self.ar}")
+            raise AddressRegisterError(self.ar)
         if self.cr.relative:
             try:
                 self.dr = self.memory[self.dr.value]
             except IndexError:
-                raise IndexError(f"Relative Address out of bounds: {self.dr.value}")
+                raise AddressRegisterError(self.dr.value)
+
+
+class InstructionPointerError(Exception):
+    def __init__(self, int_pointer):
+        self.message = f"Instruction Pointer out of bounds: {int_pointer}"
+        super().__init__(self.message)
+
+
+class AddressRegisterError(Exception):
+    def __init__(self, address_register):
+        self.message = f"Address Register out of bounds: {address_register}"
+        super().__init__(self.message)

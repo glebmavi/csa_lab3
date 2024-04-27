@@ -9,11 +9,11 @@ license = "MIT"
 python = "^3.12"
 
 [tool.poetry.dev-dependencies]
-coverage = "^7.4.4"
-mypy = "^1.9.0"
-pytest = "^8.1.1"
+coverage = "^7.5.0"
+mypy = "^1.10.0"
+pytest = "^8.1.2"
 pytest-golden = "^0.2.2"
-ruff = "^0.3.7"
+ruff = "^0.4.2"
 
 [build-system]
 requires = ["poetry-core"]

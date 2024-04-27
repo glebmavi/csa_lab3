@@ -220,7 +220,7 @@ _start
 
 ### DataPath
 
-Реализован в модуле [data_path.py](./src/machine/data_path.py).
+Реализован в модуле [data_path.py](data_path.py).
 
 TODO: Scheme
 

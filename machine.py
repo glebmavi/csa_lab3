@@ -1,6 +1,7 @@
 import sys
-from src.machine.control_unit import ControlUnit
-from src.machine.data_path import DataPath
+
+from control_unit import ControlUnit
+from data_path import DataPath
 
 
 def main(code_file, input_file):

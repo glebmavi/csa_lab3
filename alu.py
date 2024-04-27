@@ -1,4 +1,4 @@
-from src.asm.isa import *
+from isa import MAX_VALUE, MIN_VALUE, SYS_BITS
 
 
 class ALU:
@@ -44,8 +44,7 @@ class ALU:
         return self.add(a, -b)
 
     def cmp(self, a, b):
-        result = self.sub(a, b)
-        return result
+        return self.sub(a, b)
 
     def shl(self, a):
         result = (a << 1) & ((1 << SYS_BITS) - 1)  # Shift left and mask to keep within SYS_BITS

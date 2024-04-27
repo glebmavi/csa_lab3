@@ -1,12 +1,13 @@
-import os
 import sys
-from src.asm.isa import *
+from pathlib import Path
+
+from isa import IN_ADDR, MAX_ADDRESS, OUT_ADDR, CommandTypes, OpCode
 
 INPUT_EXTENSION = ".asmm"
 OUTPUT_EXTENSION = ".asmx"
 
 labels = {}
-variables = {'IN': IN_ADDR, 'OUT': OUT_ADDR}
+variables = {"IN": IN_ADDR, "OUT": OUT_ADDR}
 
 
 class Instructions:
@@ -17,22 +18,18 @@ class Instructions:
     list: List of instructions
     last_address: Last memory address used
     """
+
     def __init__(self):
         self.list = []
         self.last_address = 0
 
     def append(self, instruction):
-        """
-        Appends an instruction to the list. If an attempt is made to add an instruction with an existing address, an
-        exception is thrown. The last address is incremented by 1 after adding an instruction.
-        :param instruction: Instruction to add
-        """
         if not isinstance(instruction, Instruction):
-            raise ValueError(f"Invalid instruction: {instruction}")
+            raise InvalidInstructionError(instruction)
         if instruction.index in [i.index for i in self.list]:
-            raise ValueError(f"Memory already allocated: {instruction.index}")
+            raise MemoryAlreadyAllocatedError(instruction.index)
         if instruction.index > MAX_ADDRESS - 3:  # to avoid stack and input/output addresses
-            raise ValueError(f"Memory address out of range: {instruction.index}")
+            raise MemoryOutOfRangeError(instruction.index)
         self.list.append(instruction)
         self.last_address += 1
 
@@ -57,20 +54,15 @@ class Instruction:
         self.relative = relative
 
     def __str__(self):
-        base_str = (f"\"index\": {self.index:4}, "
-                    f"\"opcode\": \"{self.opcode:4}\", "
-                    f"\"value\": {self.value:10}")
+        base_str = (f'"index": {self.index:4}, '
+                    f'"opcode": "{self.opcode:4}", '
+                    f'"value": {self.value:10}')
         if self.relative is not None:
-            base_str += f", \"relative\": {str(self.relative):5}"
+            base_str += f', "relative": {self.relative!s:5}'
         return base_str
 
 
 def trimmer(code):
-    """
-    Removes comments and empty lines from the code
-    :param code: Source code
-    :return: List of lines without comments and empty lines
-    """
     result = []
     for line in code:
         if not line:
@@ -84,11 +76,6 @@ def trimmer(code):
 
 
 def section_split(source):
-    """
-    Splits the source code into data and code sections
-    :param source: Source code
-    :return: Separated lists data and code sections
-    """
     data = []
     code = []
     in_data = False
@@ -109,103 +96,111 @@ def section_split(source):
     return data, code
 
 
+def process_index_line(line, instructions):
+    instructions.last_address = int(line.split(" ")[1])
+
+
+def process_data_line(line, instructions):
+    line = line.split(":")
+    if len(line) == 2:
+        if line[0] == "IN" or line[0] == "OUT":
+            raise ReservedVariableError(line[0])
+        value = line[1].strip()
+        if "'" in value:
+            process_string_value(line, value, instructions)
+        else:
+            process_numeric_value(line, instructions, value)
+    else:
+        raise InvalidDataLineError(line)
+
+
+def process_string_value(line, value, instructions):
+    value = value[1:-1]
+    variables[line[0].strip()] = instructions.last_address
+    for i in range(len(value)):
+        if value[i] == value[-1]:
+            instructions.append(
+                Instruction(instructions.last_address, OpCode["NOP"], f"'{value[i]}'"))
+            instructions.append(Instruction(instructions.last_address, OpCode["NOP"], "'\\0'"))
+        else:
+            instructions.append(
+                Instruction(instructions.last_address, OpCode["NOP"], f"'{value[i]}'"))
+
+
+def process_numeric_value(line, instructions, value):
+    variables[line[0].strip()] = instructions.last_address
+    instructions.append(Instruction(instructions.last_address, OpCode["NOP"], value))
+
+
 def build_data(data, instructions: Instructions):
-    """
-    Builds the data section of the code by adding NOP instructions with the data values to the instructions list of the
-    Instructions object. The added values are stored in the "variables" dictionary.
-    :param data: List of data lines
-    :param instructions: Instructions object
-    """
     for line in data:
         if "index" in line:
-            instructions.last_address = int(line.split(" ")[1])
-
+            process_index_line(line, instructions)
         else:
-            line = line.split(":")
-            if len(line) == 2:
-                if line[0] == "IN" or line[0] == "OUT":
-                    raise ValueError(f"Cannot use reserved variable name: {line[0]}")
-                value = line[1].strip()
-                if "'" in value:
-                    value = value[1:-1]
-                    variables[line[0].strip()] = instructions.last_address
-                    for i in range(len(value)):
-                        if value[i] == value[-1]:
-                            instructions.append(Instruction(instructions.last_address, OpCode["NOP"], f"'{value[i]}'"))
-                            instructions.append(Instruction(instructions.last_address, OpCode["NOP"], f"'\\0'"))
-                        else:
-                            instructions.append(Instruction(instructions.last_address, OpCode["NOP"], f"'{value[i]}'"))
-                else:
-                    variables[line[0].strip()] = instructions.last_address
-                    instructions.append(Instruction(instructions.last_address, OpCode["NOP"], value))
-            else:
-                raise ValueError(f"Invalid data line: {line}")
+            process_data_line(line, instructions)
+
+
+def process_instruction_line(line, instructions):
+    opcode = OpCode[line[0]]
+    if len(line) == 2:
+        if line[1] in variables and opcode.get_type() == CommandTypes.DATA:
+            instructions.append(
+                Instruction(instructions.last_address, opcode, variables[line[1]], relative=False))
+        elif line[1] in labels and opcode.get_type() == CommandTypes.JUMP:
+            instructions.append(Instruction(instructions.last_address, opcode, labels[line[1]]))
+        elif "$" in line[1] and opcode.get_type() == CommandTypes.DATA:
+            var = line[1][1:]
+            instructions.append(
+                Instruction(instructions.last_address, opcode, variables[var], relative=True))
+        else:
+            try:
+                instructions.append(Instruction(instructions.last_address, opcode, int(line[1])))
+            except ValueError:
+                raise InvalidValueError(line[1])
+    elif len(line) == 1:
+        instructions.append(Instruction(instructions.last_address, opcode, 0))
+
+
+def process_label_line(line, instructions, start_found, start_addr, interrupt_found, interrupt_addr):
+    label = line[0][1:]
+    if label == "start":
+        start_found = True
+        start_addr = instructions.last_address
+    elif label == "int":
+        interrupt_found = True
+        interrupt_addr = instructions.last_address
+
+    labels[label] = instructions.last_address
+    return start_found, start_addr, interrupt_found, interrupt_addr
 
 
 def build_code(code, instructions: Instructions):
-    """
-    Builds the code section of the code by adding instructions to the instructions list of the Instructions object.
-    The added instructions are NOP, DATA or JUMP instructions. The labels dictionary is used to store the memory
-    addresses of the labels.
-    :param code: List of code lines
-    :param instructions: Instructions object
-    """
-    start_label_found = False
-    interrupt_label_found = False
-    start_address = -1
-    interrupt_address = -1
+    start_label_found, interrupt_label_found = False, False
+    start_address, interrupt_address = -1, -1
+
     for line in code:
         if "index" in line:
-            instructions.last_address = int(line.split(" ")[1])
+            process_index_line(line, instructions)
         else:
             line = line.split()
             if "_" in line[0]:
-                label = line[0][1:]
-                if label == "start":
-                    start_label_found = True
-                    start_address = instructions.last_address
-                elif label == "int":
-                    interrupt_label_found = True
-                    interrupt_address = instructions.last_address
-
-                labels[label] = instructions.last_address
+                start_label_found, start_address, interrupt_label_found, interrupt_address = process_label_line(
+                    line, instructions, start_label_found, start_address, interrupt_label_found, interrupt_address)
             else:
                 if line[0] in OpCode.__members__:
-                    opcode = OpCode[line[0]]
-                    if len(line) == 2:
-                        if line[1] in variables and opcode.get_type() == CommandTypes.DATA:
-                            instructions.append(
-                                Instruction(instructions.last_address, opcode, variables[line[1]], relative=False))
-                        elif line[1] in labels and opcode.get_type() == CommandTypes.JUMP:
-                            instructions.append(Instruction(instructions.last_address, opcode, labels[line[1]]))
-                        elif "$" in line[1] and opcode.get_type() == CommandTypes.DATA:
-                            var = line[1][1:]
-                            instructions.append(
-                                Instruction(instructions.last_address, opcode, variables[var], relative=True))
-                        else:
-                            try:
-                                instructions.append(Instruction(instructions.last_address, opcode, int(line[1])))
-                            except ValueError:
-                                raise ValueError(f"Invalid value: {line[1]}")
-                    elif len(line) == 1:
-                        instructions.append(Instruction(instructions.last_address, opcode, 0))
+                    process_instruction_line(line, instructions)
                 else:
-                    raise ValueError(f"Invalid command: {line[0]}")
+                    raise InvalidCommandError(line[0])
     if not start_label_found:
-        raise ValueError("Start label not found")
+        raise LabelNotFoundError("start")
     if not interrupt_label_found:
-        raise ValueError("Interrupt label not found")
+        raise LabelNotFoundError("int")
 
     return start_address, interrupt_address
 
 
 def json_builder(instructions: Instructions):
-    """
-    Builds a JSON string from the instructions list of the Instructions object.
-    The JSON string is a list of dictionaries. Do not use this function to build a JSON file.
-    :param instructions: Instructions object
-    :return: List of strings
-    """
+
     result = []
     for instruction in instructions.list:
         line = "{" + instruction.__str__() + "}"
@@ -215,11 +210,6 @@ def json_builder(instructions: Instructions):
 
 
 def translate(asmm):
-    """
-    Translates the source code into a JSON string
-    :param asmm: Source code
-    :return: JSON string
-    """
     result = trimmer(asmm)
     data, code = section_split(result)
     ins = Instructions()
@@ -230,12 +220,6 @@ def translate(asmm):
 
 
 def write_code(target, start_address, code, interrupt_address):
-    """
-    Writes the JSON string to a file
-    :param target: Target file
-    :param start_address: Start address of the code
-    :param code: JSON string
-    """
     with open(target, "w", encoding="utf-8") as file:
         file.write("[\n")
         file.write("""{"start_address": """ + str(start_address) + " },\n")
@@ -246,25 +230,19 @@ def write_code(target, start_address, code, interrupt_address):
 
 
 def main(source, target):
-    """
-    Main function to translate the source code into a JSON file. The source file must have a .asmm extension and the
-    target file must have a .json extension.
-    :param source: Source file
-    :param target: Target file
-    """
-    _, ext = os.path.splitext(source)
+    ext = Path(source).suffix
     if ext != INPUT_EXTENSION:
-        raise ValueError(f"Source file must have a {INPUT_EXTENSION} extension")
+        raise ExtensionError(ext)
 
-    _, ext = os.path.splitext(target)
+    ext = Path(target).suffix
     if ext != OUTPUT_EXTENSION:
-        raise ValueError(f"Target file must have a {OUTPUT_EXTENSION} extension")
+        raise ExtensionError(ext)
 
     with open(source, encoding="utf-8") as file:
         code_source = file.read().split("\n")
     code, start_address, interrupt_address = translate(code_source)
     if len(code) == 0:
-        raise ValueError("No code to translate")
+        raise EmptyCodeError()
     write_code(target, start_address, code, interrupt_address)
 
 
@@ -272,3 +250,63 @@ if __name__ == "__main__":
     assert len(sys.argv) == 3, "Wrong arguments: translator.py <source_file> <target_file>"
     _, source_file, target_file = sys.argv
     main(source_file, target_file)
+
+
+class ExtensionError(Exception):
+    def __init__(self, ext):
+        self.message = f"Invalid extension: {ext}"
+        super().__init__(self.message)
+
+
+class EmptyCodeError(Exception):
+    def __init__(self):
+        self.message = "No code to translate"
+        super().__init__(self.message)
+
+
+class LabelNotFoundError(Exception):
+    def __init__(self, label):
+        self.message = f"Label not found: _{label}"
+        super().__init__(self.message)
+
+
+class InvalidCommandError(Exception):
+    def __init__(self, command):
+        self.message = f"Invalid command: {command}"
+        super().__init__(self.message)
+
+
+class InvalidValueError(Exception):
+    def __init__(self, value):
+        self.message = f"Invalid value: {value}"
+        super().__init__(self.message)
+
+
+class InvalidDataLineError(Exception):
+    def __init__(self, line):
+        self.message = f"Invalid data line: {line}"
+        super().__init__(self.message)
+
+
+class ReservedVariableError(Exception):
+    def __init__(self, variable):
+        self.message = f"Cannot use reserved variable name: {variable}"
+        super().__init__(self.message)
+
+
+class MemoryOutOfRangeError(Exception):
+    def __init__(self, address):
+        self.message = f"Memory address out of range: {address}"
+        super().__init__(self.message)
+
+
+class MemoryAlreadyAllocatedError(Exception):
+    def __init__(self, address):
+        self.message = f"Memory already allocated: {address}"
+        super().__init__(self.message)
+
+
+class InvalidInstructionError(Exception):
+    def __init__(self, instruction):
+        self.message = f"Invalid instruction: {instruction}"
+        super().__init__(self.message)
