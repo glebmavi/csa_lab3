@@ -1,6 +1,18 @@
 import sys
 from pathlib import Path
 
+from errors import (
+    EmptyCodeError,
+    ExtensionError,
+    InvalidCommandError,
+    InvalidDataLineError,
+    InvalidInstructionError,
+    InvalidValueError,
+    LabelNotFoundError,
+    MemoryAlreadyAllocatedError,
+    MemoryOutOfRangeError,
+    ReservedVariableError,
+)
 from isa import IN_ADDR, MAX_ADDRESS, OUT_ADDR, CommandTypes, OpCode
 
 INPUT_EXTENSION = ".asmm"
@@ -221,7 +233,7 @@ def write_code(target, start_address, code, interrupt_address):
         file.write("""{"interrupt_address": """ + str(interrupt_address) + " },\n")
         for line in code:
             file.write(f"{line}\n")
-        file.write("]\n")
+        file.write("]")
 
 
 def main(source, target):
@@ -239,69 +251,10 @@ def main(source, target):
     if len(code) == 0:
         raise EmptyCodeError()
     write_code(target, start_address, code, interrupt_address)
+    print("source LoC:", len(code_source), "code instr:", len(code))
 
 
 if __name__ == "__main__":
     assert len(sys.argv) == 3, "Wrong arguments: translator.py <source_file> <target_file>"
     _, source_file, target_file = sys.argv
     main(source_file, target_file)
-
-
-class ExtensionError(Exception):
-    def __init__(self, ext):
-        self.message = f"Invalid extension: {ext}"
-        super().__init__(self.message)
-
-
-class EmptyCodeError(Exception):
-    def __init__(self):
-        self.message = "No code to translate"
-        super().__init__(self.message)
-
-
-class LabelNotFoundError(Exception):
-    def __init__(self, label):
-        self.message = f"Label not found: _{label}"
-        super().__init__(self.message)
-
-
-class InvalidCommandError(Exception):
-    def __init__(self, command):
-        self.message = f"Invalid command: {command}"
-        super().__init__(self.message)
-
-
-class InvalidValueError(Exception):
-    def __init__(self, value):
-        self.message = f"Invalid value: {value}"
-        super().__init__(self.message)
-
-
-class InvalidDataLineError(Exception):
-    def __init__(self, line):
-        self.message = f"Invalid data line: {line}"
-        super().__init__(self.message)
-
-
-class ReservedVariableError(Exception):
-    def __init__(self, variable):
-        self.message = f"Cannot use reserved variable name: {variable}"
-        super().__init__(self.message)
-
-
-class MemoryOutOfRangeError(Exception):
-    def __init__(self, address):
-        self.message = f"Memory address out of range: {address}"
-        super().__init__(self.message)
-
-
-class MemoryAlreadyAllocatedError(Exception):
-    def __init__(self, address):
-        self.message = f"Memory already allocated: {address}"
-        super().__init__(self.message)
-
-
-class InvalidInstructionError(Exception):
-    def __init__(self, instruction):
-        self.message = f"Invalid instruction: {instruction}"
-        super().__init__(self.message)

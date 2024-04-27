@@ -10,6 +10,13 @@ _start    ; entry point
     ;CLR ; clear the accumulator
     LOAD A
     ADD $B  ; adds the value of A with the reference of B
-    SAVE OUT ; expected to be 10
-    HLT
+    SAVE C ; save the result in C
+    JMP print ; jump to print
+
 _int ; no need to implement
+
+
+_print ; print the value of C
+    LOAD C
+    SAVE OUT
+    HLT

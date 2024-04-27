@@ -1,15 +1,17 @@
 import logging
 from enum import Enum
 
+from errors import UnknownOpcodeError
 from isa import IN_ADDR, INTERRUPT_START, OUT_ADDR, CommandTypes, OpCode
 from translator import Instruction
 
 logging.basicConfig(
     level=logging.INFO,  # Set the logging level to INFO
-    format="%(message)s",  # Set the format of the log messages
+    format="%(levelname)s    %(name)s:%(funcName)s     %(message)s",  # Set the format of the log messages
     handlers=[  # Handlers determine where the log messages go: stdout, file, etc.
-        logging.StreamHandler()  # Log to stdout
+        logging.StreamHandler(),  # Log to stdout
     ],
+    encoding="utf-8",  # Set the encoding of the log messages
 )
 
 logger = logging.getLogger(__name__)
@@ -29,6 +31,8 @@ class ControlUnit:
         self.input_data = input_data
         self.limit = limit
         self.interrupt = InterruptType.NONE
+        self.instruction_counter = 0
+
         self.data_path.load_program(program)
         self.opcode_methods = {
             OpCode.LOAD: self.execute_load,
@@ -93,6 +97,7 @@ class ControlUnit:
     def run(self, interrupt_type=InterruptType.NONE):
         while self.interrupt == interrupt_type:
             self.instruction_step()
+            self.instruction_counter += 1
 
         if self.interrupt == InterruptType.INPUT:
             self.__print__(f"Input: {self.data_path.memory[IN_ADDR]}")
@@ -108,7 +113,7 @@ class ControlUnit:
         elif self.interrupt == InterruptType.NONE:
             self.run()
 
-        return self.data_path.output
+        return self.data_path.output, self._tick, self.instruction_counter
 
     def execute_instruction(self):
         info = ""
@@ -226,8 +231,3 @@ class ControlUnit:
 
     def execute_nop(self):
         pass
-
-
-class UnknownOpcodeError(Exception):
-    def __init__(self, opcode):
-        super().__init__(f"Unknown opcode: {opcode}")

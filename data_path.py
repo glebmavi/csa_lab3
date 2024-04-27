@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from alu import ALU
+from errors import AddressRegisterError, InstructionPointerError
 from isa import INTERRUPT_START, MAX_ADDRESS, STACK_START, OpCode
 from translator import Instruction
 
@@ -71,15 +72,3 @@ class DataPath:
                 self.dr = self.memory[self.dr.value]
             except IndexError:
                 raise AddressRegisterError(self.dr.value)
-
-
-class InstructionPointerError(Exception):
-    def __init__(self, int_pointer):
-        self.message = f"Instruction Pointer out of bounds: {int_pointer}"
-        super().__init__(self.message)
-
-
-class AddressRegisterError(Exception):
-    def __init__(self, address_register):
-        self.message = f"Address Register out of bounds: {address_register}"
-        super().__init__(self.message)

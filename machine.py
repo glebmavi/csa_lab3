@@ -11,7 +11,8 @@ def main(code_file, input_file):
         input_data = eval(file.read())
     data_path = DataPath()
     control_unit = ControlUnit(data_path, code, input_data, 2000)
-    print(control_unit.run())
+    output, ticks, instructions = control_unit.run()
+    print(f"Output: {output}\nInstruction number: {instructions}\nTicks: {ticks}")
 
 
 if __name__ == "__main__":
