@@ -7,7 +7,6 @@ from translator import Instruction
 
 
 class DataPath:
-
     def __init__(self):
         self.alu = ALU()
         self.memory = [Instruction(i, OpCode.NOP, 0) for i in range(MAX_ADDRESS + 1)]
