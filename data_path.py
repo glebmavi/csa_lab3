@@ -9,7 +9,7 @@ class DataPath:
     alu = ALU()
 
     def __init__(self):
-        self.memory = [Instruction(i, OpCode.NOP, 0) for i in range(MAX_ADDRESS+1)]
+        self.memory = [Instruction(i, OpCode.NOP, 0) for i in range(MAX_ADDRESS + 1)]
         self.acc: int | str = 0  # Accumulator
         self.ar: int = 0  # Address Register
         self.ip: int = 0  # Instruction Pointer
@@ -20,15 +20,15 @@ class DataPath:
         self.output = []
 
     def __str__(self):
-        return (f"ACC: {self.acc:10} |"
-                f"AR: {self.ar:5} |"
-                f"IP: {self.ip:5} |"
-                f"DR: {self.dr}".ljust(120) + " |"
-                f"SP: {self.sp:5} |"
-                f"CR: OpCode: {self.cr.opcode:4}, Value: {self.cr.value:10}, "
-                f"Relative: {self.cr.relative}".ljust(70) + " |"
-                f"PS: {self.ps:2}"
-                )
+        return (
+            f"ACC: {self.acc:10} |" f"AR: {self.ar:5} |" f"IP: {self.ip:5} |" f"DR: {self.dr}".ljust(120)
+            + " |"
+            f"SP: {self.sp:5} |"
+            f"CR: OpCode: {self.cr.opcode:4}, Value: {self.cr.value:10}, "
+            f"Relative: {self.cr.relative}".ljust(70)
+            + " |"
+            f"PS: {self.ps:2}"
+        )
 
     def load_program(self, program):
         """

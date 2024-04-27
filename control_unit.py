@@ -9,7 +9,7 @@ logging.basicConfig(
     format="%(message)s",  # Set the format of the log messages
     handlers=[  # Handlers determine where the log messages go: stdout, file, etc.
         logging.StreamHandler()  # Log to stdout
-    ]
+    ],
 )
 
 logger = logging.getLogger(__name__)
@@ -132,8 +132,7 @@ class ControlUnit:
         return "LOAD: DR -> ACC"
 
     def execute_save(self):
-        self.data_path.memory[self.data_path.ar] = (
-            Instruction(self.data_path.ar, OpCode.NOP, self.data_path.acc))
+        self.data_path.memory[self.data_path.ar] = Instruction(self.data_path.ar, OpCode.NOP, self.data_path.acc)
         if self.data_path.ar == OUT_ADDR:
             self.data_path.output.append(self.data_path.acc)
             self.__print__(f"Output: {self.data_path.acc}")
@@ -141,8 +140,7 @@ class ControlUnit:
 
     def execute_push(self):
         self.data_path.sp -= 1
-        self.data_path.memory[self.data_path.sp] = (
-            Instruction(self.data_path.sp, OpCode.NOP, self.data_path.acc))
+        self.data_path.memory[self.data_path.sp] = Instruction(self.data_path.sp, OpCode.NOP, self.data_path.acc)
         return "PUSH: SP - 1 -> SP, ACC -> mem[SP]"
 
     def execute_pop(self):

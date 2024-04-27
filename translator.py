@@ -47,6 +47,7 @@ class Instruction:
     value: Value of data or address to jump. Otherwise, 0
     relative: If the value is a relative address
     """
+
     def __init__(self, index, opcode: OpCode, value, relative=None):
         self.index = index
         self.opcode = opcode
@@ -54,9 +55,7 @@ class Instruction:
         self.relative = relative
 
     def __str__(self):
-        base_str = (f'"index": {self.index:4}, '
-                    f'"opcode": "{self.opcode:4}", '
-                    f'"value": {self.value:10}')
+        base_str = f'"index": {self.index:4}, ' f'"opcode": "{self.opcode:4}", ' f'"value": {self.value:10}'
         if self.relative is not None:
             base_str += f', "relative": {self.relative!s:5}'
         return base_str
@@ -68,7 +67,7 @@ def trimmer(code):
         if not line:
             continue
         if ";" in line:
-            line = line[:line.index(";")]
+            line = line[: line.index(";")]
         line = line.strip()
         if line:
             result.append(line)
@@ -119,12 +118,10 @@ def process_string_value(line, value, instructions):
     variables[line[0].strip()] = instructions.last_address
     for i in range(len(value)):
         if value[i] == value[-1]:
-            instructions.append(
-                Instruction(instructions.last_address, OpCode["NOP"], f"'{value[i]}'"))
+            instructions.append(Instruction(instructions.last_address, OpCode["NOP"], f"'{value[i]}'"))
             instructions.append(Instruction(instructions.last_address, OpCode["NOP"], "'\\0'"))
         else:
-            instructions.append(
-                Instruction(instructions.last_address, OpCode["NOP"], f"'{value[i]}'"))
+            instructions.append(Instruction(instructions.last_address, OpCode["NOP"], f"'{value[i]}'"))
 
 
 def process_numeric_value(line, instructions, value):
@@ -144,14 +141,12 @@ def process_instruction_line(line, instructions):
     opcode = OpCode[line[0]]
     if len(line) == 2:
         if line[1] in variables and opcode.get_type() == CommandTypes.DATA:
-            instructions.append(
-                Instruction(instructions.last_address, opcode, variables[line[1]], relative=False))
+            instructions.append(Instruction(instructions.last_address, opcode, variables[line[1]], relative=False))
         elif line[1] in labels and opcode.get_type() == CommandTypes.JUMP:
             instructions.append(Instruction(instructions.last_address, opcode, labels[line[1]]))
         elif "$" in line[1] and opcode.get_type() == CommandTypes.DATA:
             var = line[1][1:]
-            instructions.append(
-                Instruction(instructions.last_address, opcode, variables[var], relative=True))
+            instructions.append(Instruction(instructions.last_address, opcode, variables[var], relative=True))
         else:
             try:
                 instructions.append(Instruction(instructions.last_address, opcode, int(line[1])))
@@ -185,7 +180,8 @@ def build_code(code, instructions: Instructions):
             line = line.split()
             if "_" in line[0]:
                 start_label_found, start_address, interrupt_label_found, interrupt_address = process_label_line(
-                    line, instructions, start_label_found, start_address, interrupt_label_found, interrupt_address)
+                    line, instructions, start_label_found, start_address, interrupt_label_found, interrupt_address
+                )
             else:
                 if line[0] in OpCode.__members__:
                     process_instruction_line(line, instructions)
@@ -200,7 +196,6 @@ def build_code(code, instructions: Instructions):
 
 
 def json_builder(instructions: Instructions):
-
     result = []
     for instruction in instructions.list:
         line = "{" + instruction.__str__() + "}"
