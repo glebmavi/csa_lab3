@@ -6,12 +6,12 @@ from isa import IN_ADDR, INTERRUPT_START, OUT_ADDR, CommandTypes, OpCode
 from translator import Instruction
 
 logging.basicConfig(
-    level=logging.INFO,  # Set the logging level to INFO
-    format="%(levelname)s    %(name)s:%(funcName)s     %(message)s",  # Set the format of the log messages
-    handlers=[  # Handlers determine where the log messages go: stdout, file, etc.
-        logging.StreamHandler(),  # Log to stdout
+    level=logging.INFO,
+    format="%(levelname)s    %(name)s:%(funcName)s     %(message)s",
+    handlers=[
+        logging.StreamHandler(),
     ],
-    encoding="utf-8",  # Set the encoding of the log messages
+    encoding="utf-8",
 )
 
 logger = logging.getLogger(__name__)

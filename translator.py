@@ -76,8 +76,6 @@ class Instruction:
 def trimmer(code):
     result = []
     for line in code:
-        if not line:
-            continue
         if ";" in line:
             line = line[: line.index(";")]
         line = line.strip()
@@ -87,23 +85,15 @@ def trimmer(code):
 
 
 def section_split(source):
-    data = []
-    code = []
-    in_data = False
-    in_code = False
+    data, code = [], []
+    section = None
     for line in source:
         if "section .data" in line:
-            in_data = True
-            in_code = False
-            continue
-        if "section .code" in line:
-            in_data = False
-            in_code = True
-            continue
-        if in_data:
-            data.append(line)
-        if in_code:
-            code.append(line)
+            section = data
+        elif "section .code" in line:
+            section = code
+        elif section is not None:
+            section.append(line)
     return data, code
 
 

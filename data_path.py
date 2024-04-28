@@ -17,7 +17,7 @@ class DataPath:
         self.sp: int = STACK_START  # Stack Pointer
         self.cr: Instruction = Instruction(0, OpCode.NOP, 0)  # Command Register
         self.ps: int = self.alu.get_flags_as_int()  # Program Status
-        self.output = []
+        self.output = []  # Used only as a way to capture output for testing
 
     def __str__(self):
         return (
