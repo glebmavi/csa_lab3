@@ -33,7 +33,7 @@ class ControlUnit:
         self.interrupt = InterruptType.NONE
         self.instruction_counter = 0
 
-        self.data_path.load_program(program)
+        self.load_program(program)
         self.opcode_methods = {
             OpCode.LOAD: self.execute_load,
             OpCode.SAVE: self.execute_save,
@@ -58,6 +58,20 @@ class ControlUnit:
             OpCode.IRET: self.execute_iret,
             OpCode.NOP: self.execute_nop,
         }
+
+    def load_program(self, program):
+        """
+        Load a program into memory.
+        Program is a list of Instruction objects and a start address at ht beginning.
+        """
+        self.data_path.ip = program[0]["start_address"]
+        self.data_path.memory[INTERRUPT_START] = program[1]["interrupt_address"]
+        for instruction in program[2:]:
+            index: int = instruction["index"]
+            opcode = OpCode[instruction["opcode"].strip().upper()]
+            value = instruction["value"]
+            relative = instruction.get("relative", None)
+            self.data_path.memory[index] = Instruction(index, opcode, value, relative)
 
     def tick(self, string=""):
         self.__print__(string)

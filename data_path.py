@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from alu import ALU
 from errors import AddressRegisterError, InstructionPointerError
-from isa import INTERRUPT_START, MAX_ADDRESS, STACK_START, OpCode
+from isa import MAX_ADDRESS, STACK_START, OpCode
 from translator import Instruction
 
 
@@ -29,20 +29,6 @@ class DataPath:
             + " |"
             f"PS: {self.ps:2}"
         )
-
-    def load_program(self, program):
-        """
-        Load a program into memory.
-        Program is a list of Instruction objects and a start address at ht beginning.
-        """
-        self.ip = program[0]["start_address"]
-        self.memory[INTERRUPT_START] = program[1]["interrupt_address"]
-        for instruction in program[2:]:
-            index: int = instruction["index"]
-            opcode = OpCode[instruction["opcode"].strip().upper()]
-            value = instruction["value"]
-            relative = instruction.get("relative", None)
-            self.memory[index] = Instruction(index, opcode, value, relative)
 
     def fetch_instruction(self):
         """

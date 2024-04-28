@@ -5,6 +5,12 @@ B: 10
 C: 0 ; result
 
 section .code ; code section
+
+_print ; print the value of C
+    LOAD C
+    SAVE OUT
+    HLT
+
 index 100
 _start    ; entry point
     ;CLR ; clear the accumulator
@@ -14,9 +20,3 @@ _start    ; entry point
     JMP print ; jump to print
 
 _int ; no need to implement
-
-
-_print ; print the value of C
-    LOAD C
-    SAVE OUT
-    HLT

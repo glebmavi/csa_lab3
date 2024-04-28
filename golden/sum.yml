@@ -1,0 +1,69 @@
+in_source: |-
+  section .data ; data section
+  index 10
+  A: 5
+  B: 10
+  C: 0 ; result
+
+  section .code ; code section
+
+  _print ; print the value of C
+      LOAD C
+      SAVE OUT
+      HLT
+
+  index 100
+  _start    ; entry point
+      ;CLR ; clear the accumulator
+      LOAD A
+      ADD $B  ; adds the value of A with the reference of B
+      SAVE C ; save the result in C
+      JMP print ; jump to print
+
+  _int ; no need to implement
+in_stdin: |-
+  []
+out_code: |-
+  [
+  {"start_address": 100 },
+  {"interrupt_address": 104 },
+  {"index":   10, "opcode": "NOP ", "value": 5         },
+  {"index":   11, "opcode": "NOP ", "value": 10        },
+  {"index":   12, "opcode": "NOP ", "value": 0         },
+  {"index":   13, "opcode": "LOAD", "value":         12, "relative": False},
+  {"index":   14, "opcode": "SAVE", "value":       2047, "relative": False},
+  {"index":   15, "opcode": "HLT ", "value":          0},
+  {"index":  100, "opcode": "LOAD", "value":         10, "relative": False},
+  {"index":  101, "opcode": "ADD ", "value":         11, "relative": True },
+  {"index":  102, "opcode": "SAVE", "value":         12, "relative": False},
+  {"index":  103, "opcode": "JMP ", "value":         13}
+  ]
+out_stdout: |
+  source LoC: 22 code instr: 10
+  ============================================================
+  Output: [10]
+  Instruction number: 7
+  Ticks: 20
+out_log: |
+  INFO    control_unit:__print__     Tick:     0 |Action: Fetch instruction (IP -> AR, IP + 1 -> IP, mem[AR] -> DR, DR -> CR)         |Interrupt: none  |ACC:          0 |AR:   100 |IP:   101 |DR: "index":  100, "opcode": "LOAD", "value":         10, "relative": False       |SP:  2044 |CR: OpCode: LOAD, Value:         10, Relative: False      |PS:  2
+  INFO    control_unit:__print__     Tick:     1 |Action: Read operand (CR[addr] -> DR, DR -> AR, mem[AR] -> DR)                      |Interrupt: none  |ACC:          0 |AR:    10 |IP:   101 |DR: "index":   10, "opcode": "NOP ", "value":          5                          |SP:  2044 |CR: OpCode: LOAD, Value:         10, Relative: False      |PS:  2
+  INFO    control_unit:__print__     Tick:     2 |Action: Execute instruction (LOAD: DR -> ACC)                                       |Interrupt: none  |ACC:          5 |AR:    10 |IP:   101 |DR: "index":   10, "opcode": "NOP ", "value":          5                          |SP:  2044 |CR: OpCode: LOAD, Value:         10, Relative: False      |PS:  0
+  INFO    control_unit:__print__     Tick:     3 |Action: Fetch instruction (IP -> AR, IP + 1 -> IP, mem[AR] -> DR, DR -> CR)         |Interrupt: none  |ACC:          5 |AR:   101 |IP:   102 |DR: "index":  101, "opcode": "ADD ", "value":         11, "relative": True        |SP:  2044 |CR: OpCode: ADD , Value:         11, Relative: True       |PS:  0
+  INFO    control_unit:__print__     Tick:     4 |Action: Read operand (CR[addr] -> DR, DR -> AR, mem[AR] -> DR)                      |Interrupt: none  |ACC:          5 |AR:    11 |IP:   102 |DR: "index":   10, "opcode": "NOP ", "value":          5                          |SP:  2044 |CR: OpCode: ADD , Value:         11, Relative: True       |PS:  0
+  INFO    control_unit:__print__     Tick:     5 |Action: Execute instruction (ADD: ACC + DR -> ACC)                                  |Interrupt: none  |ACC:         10 |AR:    11 |IP:   102 |DR: "index":   10, "opcode": "NOP ", "value":          5                          |SP:  2044 |CR: OpCode: ADD , Value:         11, Relative: True       |PS:  0
+  INFO    control_unit:__print__     Tick:     6 |Action: Fetch instruction (IP -> AR, IP + 1 -> IP, mem[AR] -> DR, DR -> CR)         |Interrupt: none  |ACC:         10 |AR:   102 |IP:   103 |DR: "index":  102, "opcode": "SAVE", "value":         12, "relative": False       |SP:  2044 |CR: OpCode: SAVE, Value:         12, Relative: False      |PS:  0
+  INFO    control_unit:__print__     Tick:     7 |Action: Read operand (CR[addr] -> DR, DR -> AR, mem[AR] -> DR)                      |Interrupt: none  |ACC:         10 |AR:    12 |IP:   103 |DR: "index":   12, "opcode": "NOP ", "value":          0                          |SP:  2044 |CR: OpCode: SAVE, Value:         12, Relative: False      |PS:  0
+  INFO    control_unit:__print__     Tick:     8 |Action: Execute instruction (SAVE: ACC -> mem[AR])                                  |Interrupt: none  |ACC:         10 |AR:    12 |IP:   103 |DR: "index":   12, "opcode": "NOP ", "value":          0                          |SP:  2044 |CR: OpCode: SAVE, Value:         12, Relative: False      |PS:  0
+  INFO    control_unit:__print__     Tick:     9 |Action: Fetch instruction (IP -> AR, IP + 1 -> IP, mem[AR] -> DR, DR -> CR)         |Interrupt: none  |ACC:         10 |AR:   103 |IP:   104 |DR: "index":  103, "opcode": "JMP ", "value":         13                          |SP:  2044 |CR: OpCode: JMP , Value:         13, Relative: None       |PS:  0
+  INFO    control_unit:__print__     Tick:    10 |Action: Read operand (CR[addr] -> DR, DR -> AR, mem[AR] -> DR)                      |Interrupt: none  |ACC:         10 |AR:    13 |IP:   104 |DR: "index":   13, "opcode": "LOAD", "value":         12, "relative": False       |SP:  2044 |CR: OpCode: JMP , Value:         13, Relative: None       |PS:  0
+  INFO    control_unit:__print__     Tick:    11 |Action: Execute instruction (JMP: DR -> IP)                                         |Interrupt: none  |ACC:         10 |AR:    13 |IP:    13 |DR: "index":   13, "opcode": "LOAD", "value":         12, "relative": False       |SP:  2044 |CR: OpCode: JMP , Value:         13, Relative: None       |PS:  0
+  INFO    control_unit:__print__     Tick:    12 |Action: Fetch instruction (IP -> AR, IP + 1 -> IP, mem[AR] -> DR, DR -> CR)         |Interrupt: none  |ACC:         10 |AR:    13 |IP:    14 |DR: "index":   13, "opcode": "LOAD", "value":         12, "relative": False       |SP:  2044 |CR: OpCode: LOAD, Value:         12, Relative: False      |PS:  0
+  INFO    control_unit:__print__     Tick:    13 |Action: Read operand (CR[addr] -> DR, DR -> AR, mem[AR] -> DR)                      |Interrupt: none  |ACC:         10 |AR:    12 |IP:    14 |DR: "index":   12, "opcode": "NOP ", "value":         10                          |SP:  2044 |CR: OpCode: LOAD, Value:         12, Relative: False      |PS:  0
+  INFO    control_unit:__print__     Tick:    14 |Action: Execute instruction (LOAD: DR -> ACC)                                       |Interrupt: none  |ACC:         10 |AR:    12 |IP:    14 |DR: "index":   12, "opcode": "NOP ", "value":         10                          |SP:  2044 |CR: OpCode: LOAD, Value:         12, Relative: False      |PS:  0
+  INFO    control_unit:__print__     Tick:    15 |Action: Fetch instruction (IP -> AR, IP + 1 -> IP, mem[AR] -> DR, DR -> CR)         |Interrupt: none  |ACC:         10 |AR:    14 |IP:    15 |DR: "index":   14, "opcode": "SAVE", "value":       2047, "relative": False       |SP:  2044 |CR: OpCode: SAVE, Value:       2047, Relative: False      |PS:  0
+  INFO    control_unit:__print__     Tick:    16 |Action: Read operand (CR[addr] -> DR, DR -> AR, mem[AR] -> DR)                      |Interrupt: none  |ACC:         10 |AR:  2047 |IP:    15 |DR: "index": 2047, "opcode": "NOP ", "value":          0                          |SP:  2044 |CR: OpCode: SAVE, Value:       2047, Relative: False      |PS:  0
+  INFO    control_unit:__print__     Tick:    17 |Action: Output: 10                                                                  |Interrupt: none  |ACC:         10 |AR:  2047 |IP:    15 |DR: "index": 2047, "opcode": "NOP ", "value":          0                          |SP:  2044 |CR: OpCode: SAVE, Value:       2047, Relative: False      |PS:  0
+  INFO    control_unit:__print__     Tick:    17 |Action: Execute instruction (SAVE: ACC -> mem[AR])                                  |Interrupt: none  |ACC:         10 |AR:  2047 |IP:    15 |DR: "index": 2047, "opcode": "NOP ", "value":          0                          |SP:  2044 |CR: OpCode: SAVE, Value:       2047, Relative: False      |PS:  0
+  INFO    control_unit:__print__     Tick:    18 |Action: Fetch instruction (IP -> AR, IP + 1 -> IP, mem[AR] -> DR, DR -> CR)         |Interrupt: none  |ACC:         10 |AR:    15 |IP:    16 |DR: "index":   15, "opcode": "HLT ", "value":          0                          |SP:  2044 |CR: OpCode: HLT , Value:          0, Relative: None       |PS:  0
+  INFO    control_unit:__print__     Tick:    19 |Action: Execute instruction (HLT)                                                   |Interrupt: halt  |ACC:         10 |AR:    15 |IP:    16 |DR: "index":   15, "opcode": "HLT ", "value":          0                          |SP:  2044 |CR: OpCode: HLT , Value:          0, Relative: None       |PS:  0
+  INFO    control_unit:__print__     Tick:    20 |Action: Halt                                                                        |Interrupt: halt  |ACC:         10 |AR:    15 |IP:    16 |DR: "index":   15, "opcode": "HLT ", "value":          0                          |SP:  2044 |CR: OpCode: HLT , Value:          0, Relative: None       |PS:  0

@@ -149,7 +149,7 @@ _start
 - Машинное слово -- `32` бита, знаковое.
 - В качестве аргументов команды принимают `11` битные беззнаковые адреса ячеек памяти.
 
-Работа каждой ниструкции выполняется в нескольких тактах:
+Работа каждой инструкции выполняется в нескольких тактах:
  - Чтение команды из памяти:
    - Счетчик команд (IP) указывает на адрес в памяти, откуда следует выбрать команду. Значение из этого адреса загружается в регистр команд (CR).
    - `IP -> AR, IP + 1 -> IP, mem[AR] -> DR, DR -> CR` 
@@ -263,13 +263,181 @@ _start
 
 Реализован в модуле [data_path.py](data_path.py).
 
-TODO: Scheme
+![data_path.drawio.svg](data_path.drawio.svg)
+Синим цветом указаны сигналы, которые из ALU, для удобства отображения.
 
+Класс `data_path` реализует управление памятью и регистрами процессора.
+ - `fetch_instruction`: Загружает инструкцию из памяти. Счетчик команд (IP) указывает на адрес в памяти, откуда следует выбрать команду. Значение из этого адреса загружается в регистр команд (CR).
+ - `read_operand` : Читает операнд из памяти. Адрес операнда из регистра команд (CR) загружается в регистр данных (DR), который затем передается в регистр адреса (AR). Значение из этого адреса в памяти загружается обратно в регистр данных (DR).
 
+`data_path` также имеет экземпляр класса `ALU`, который реализует арифметическо-логическое устройство процессора.
+ - `set_flags`: Устанавливает флаги N, Z и C на основе результата операции.
+ - `get_flags_as_int`: Конвертирует флаги N, Z и C в одно целое число, для регистра состояния процессора.
 
 ### ControlUnit
-TODO
+
+Реализован в модуле [control_unit.py](control_unit.py).
+
+![control_unit.drawio.svg](control_unit.drawio.svg)
+
+Класс `control_unit` реализует управление процессором.
+ - `load_program`: Загружает программу в память, устанавливая адреса начала программы и программы прерываний.
+ - `tick`: Увеличивает счетчик тактов и проверяет наличие входных данных.
+ - `instruction_step`: Выполняет один шаг инструкции, включая чтение инструкции из памяти, чтение операндов (если требуется) и выполнение операции.
+ - `run`: Запускает выполнение программы до возникновения прерывания.
+ - `execute_instruction`: Выполняет текущую инструкцию, указанную в регистре команд.
+
+Особенности работы модели:
+ - Цикл симуляции осуществляется в функции `run`.
+ - Шаг моделирования соответствует одному такту процессора с выводом состояния в журнал.
+ - Для журнала состояний процессора используется стандартный модуль `logging`.
+ - Количество тактов для моделирования лимитировано.
+ - Проверка прерываний осуществляется после каждого запуска `instruction_step`.
+ - Остановка моделирования осуществляется при:
+   - установлении в любом месте программы `self.interrupt = InterruptType.ERROR`
+   - достижении лимита тактов
+   - выполнении инструкции `HLT`
 
 
 ## Тестирование
-TODO
+ - Тестирование осуществляется при помощи golden test-ов.
+ - Настройка golden тестирования находится в [модуле](./golden_test.py).
+ - Конфигурация golden test-ов лежит в [директории](./golden).
+
+Реализованные тесты
+1. [cat](./examples/asm/cat.asmm) - Программа, копирующая ввод в вывод.
+2. [hello user](./examples/asm/hellouser.asmm) - Программа ожидает имени пользователя и выводит приветствие.
+3. [hello world](./examples/asm/helloworld.asmm) - Программа выводит "Hello, World!".
+4. [prob2](./examples/asm/prob2.asmm) - Программа находит сумму всех четных чисел Фибоначчи, не превышающих `4 000 000`.
+
+CI при помощи Github Actions:
+
+```
+name: csa_lab3
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.12
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+          poetry install
+
+      - name: Run tests and collect coverage
+        run: |
+          poetry run coverage run -m pytest .
+          poetry run coverage report -m
+        env:
+          CI: true
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.12
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+          poetry install
+
+      - name: Check code formatting with Ruff
+        run: poetry run ruff format --check .
+
+      - name: Run Ruff linters
+        run: poetry run ruff check .
+```
+
+где:
+ - `test` - запускает тесты и собирает покрытие кода.
+ - `lint` - проверяет форматирование кода и запускает линтеры.
+
+Пример использования и журнал работы процессора на примере программы [sum](./examples/asm/sum.asmm):
+
+```
+> ./translator.py ./examples/asm/sum.asmm ./examples/build/sum.asmx
+source LoC: 25 code instr: 10
+> ./machine.py ./examples/build/sum.asmx ./examples/input/noinput.txt
+INFO    control_unit:__print__     Tick:     0 |Action: Fetch instruction (IP -> AR, IP + 1 -> IP, mem[AR] -> DR, DR -> CR)         |Interrupt: none  |ACC:          0 |AR:   100 |IP:   101 |DR: "index":  100, "opcode": "LOAD", "value":         10, "relative": False       |SP:  2044 |CR: OpCode: LOAD, Value:         10, Relative: False      |PS:  2
+INFO    control_unit:__print__     Tick:     1 |Action: Read operand (CR[addr] -> DR, DR -> AR, mem[AR] -> DR)                      |Interrupt: none  |ACC:          0 |AR:    10 |IP:   101 |DR: "index":   10, "opcode": "NOP ", "value":          5                          |SP:  2044 |CR: OpCode: LOAD, Value:         10, Relative: False      |PS:  2
+INFO    control_unit:__print__     Tick:     2 |Action: Execute instruction (LOAD: DR -> ACC)                                       |Interrupt: none  |ACC:          5 |AR:    10 |IP:   101 |DR: "index":   10, "opcode": "NOP ", "value":          5                          |SP:  2044 |CR: OpCode: LOAD, Value:         10, Relative: False      |PS:  0
+INFO    control_unit:__print__     Tick:     3 |Action: Fetch instruction (IP -> AR, IP + 1 -> IP, mem[AR] -> DR, DR -> CR)         |Interrupt: none  |ACC:          5 |AR:   101 |IP:   102 |DR: "index":  101, "opcode": "ADD ", "value":         11, "relative": True        |SP:  2044 |CR: OpCode: ADD , Value:         11, Relative: True       |PS:  0
+INFO    control_unit:__print__     Tick:     4 |Action: Read operand (CR[addr] -> DR, DR -> AR, mem[AR] -> DR)                      |Interrupt: none  |ACC:          5 |AR:    11 |IP:   102 |DR: "index":   10, "opcode": "NOP ", "value":          5                          |SP:  2044 |CR: OpCode: ADD , Value:         11, Relative: True       |PS:  0
+INFO    control_unit:__print__     Tick:     5 |Action: Execute instruction (ADD: ACC + DR -> ACC)                                  |Interrupt: none  |ACC:         10 |AR:    11 |IP:   102 |DR: "index":   10, "opcode": "NOP ", "value":          5                          |SP:  2044 |CR: OpCode: ADD , Value:         11, Relative: True       |PS:  0
+INFO    control_unit:__print__     Tick:     6 |Action: Fetch instruction (IP -> AR, IP + 1 -> IP, mem[AR] -> DR, DR -> CR)         |Interrupt: none  |ACC:         10 |AR:   102 |IP:   103 |DR: "index":  102, "opcode": "SAVE", "value":         12, "relative": False       |SP:  2044 |CR: OpCode: SAVE, Value:         12, Relative: False      |PS:  0
+INFO    control_unit:__print__     Tick:     7 |Action: Read operand (CR[addr] -> DR, DR -> AR, mem[AR] -> DR)                      |Interrupt: none  |ACC:         10 |AR:    12 |IP:   103 |DR: "index":   12, "opcode": "NOP ", "value":          0                          |SP:  2044 |CR: OpCode: SAVE, Value:         12, Relative: False      |PS:  0
+INFO    control_unit:__print__     Tick:     8 |Action: Execute instruction (SAVE: ACC -> mem[AR])                                  |Interrupt: none  |ACC:         10 |AR:    12 |IP:   103 |DR: "index":   12, "opcode": "NOP ", "value":          0                          |SP:  2044 |CR: OpCode: SAVE, Value:         12, Relative: False      |PS:  0
+INFO    control_unit:__print__     Tick:     9 |Action: Fetch instruction (IP -> AR, IP + 1 -> IP, mem[AR] -> DR, DR -> CR)         |Interrupt: none  |ACC:         10 |AR:   103 |IP:   104 |DR: "index":  103, "opcode": "JMP ", "value":         13                          |SP:  2044 |CR: OpCode: JMP , Value:         13, Relative: None       |PS:  0
+INFO    control_unit:__print__     Tick:    10 |Action: Read operand (CR[addr] -> DR, DR -> AR, mem[AR] -> DR)                      |Interrupt: none  |ACC:         10 |AR:    13 |IP:   104 |DR: "index":   13, "opcode": "LOAD", "value":         12, "relative": False       |SP:  2044 |CR: OpCode: JMP , Value:         13, Relative: None       |PS:  0
+INFO    control_unit:__print__     Tick:    11 |Action: Execute instruction (JMP: DR -> IP)                                         |Interrupt: none  |ACC:         10 |AR:    13 |IP:    13 |DR: "index":   13, "opcode": "LOAD", "value":         12, "relative": False       |SP:  2044 |CR: OpCode: JMP , Value:         13, Relative: None       |PS:  0
+INFO    control_unit:__print__     Tick:    12 |Action: Fetch instruction (IP -> AR, IP + 1 -> IP, mem[AR] -> DR, DR -> CR)         |Interrupt: none  |ACC:         10 |AR:    13 |IP:    14 |DR: "index":   13, "opcode": "LOAD", "value":         12, "relative": False       |SP:  2044 |CR: OpCode: LOAD, Value:         12, Relative: False      |PS:  0
+INFO    control_unit:__print__     Tick:    13 |Action: Read operand (CR[addr] -> DR, DR -> AR, mem[AR] -> DR)                      |Interrupt: none  |ACC:         10 |AR:    12 |IP:    14 |DR: "index":   12, "opcode": "NOP ", "value":         10                          |SP:  2044 |CR: OpCode: LOAD, Value:         12, Relative: False      |PS:  0
+INFO    control_unit:__print__     Tick:    14 |Action: Execute instruction (LOAD: DR -> ACC)                                       |Interrupt: none  |ACC:         10 |AR:    12 |IP:    14 |DR: "index":   12, "opcode": "NOP ", "value":         10                          |SP:  2044 |CR: OpCode: LOAD, Value:         12, Relative: False      |PS:  0
+INFO    control_unit:__print__     Tick:    15 |Action: Fetch instruction (IP -> AR, IP + 1 -> IP, mem[AR] -> DR, DR -> CR)         |Interrupt: none  |ACC:         10 |AR:    14 |IP:    15 |DR: "index":   14, "opcode": "SAVE", "value":       2047, "relative": False       |SP:  2044 |CR: OpCode: SAVE, Value:       2047, Relative: False      |PS:  0
+INFO    control_unit:__print__     Tick:    16 |Action: Read operand (CR[addr] -> DR, DR -> AR, mem[AR] -> DR)                      |Interrupt: none  |ACC:         10 |AR:  2047 |IP:    15 |DR: "index": 2047, "opcode": "NOP ", "value":          0                          |SP:  2044 |CR: OpCode: SAVE, Value:       2047, Relative: False      |PS:  0
+INFO    control_unit:__print__     Tick:    17 |Action: Output: 10                                                                  |Interrupt: none  |ACC:         10 |AR:  2047 |IP:    15 |DR: "index": 2047, "opcode": "NOP ", "value":          0                          |SP:  2044 |CR: OpCode: SAVE, Value:       2047, Relative: False      |PS:  0
+INFO    control_unit:__print__     Tick:    17 |Action: Execute instruction (SAVE: ACC -> mem[AR])                                  |Interrupt: none  |ACC:         10 |AR:  2047 |IP:    15 |DR: "index": 2047, "opcode": "NOP ", "value":          0                          |SP:  2044 |CR: OpCode: SAVE, Value:       2047, Relative: False      |PS:  0
+INFO    control_unit:__print__     Tick:    18 |Action: Fetch instruction (IP -> AR, IP + 1 -> IP, mem[AR] -> DR, DR -> CR)         |Interrupt: none  |ACC:         10 |AR:    15 |IP:    16 |DR: "index":   15, "opcode": "HLT ", "value":          0                          |SP:  2044 |CR: OpCode: HLT , Value:          0, Relative: None       |PS:  0
+INFO    control_unit:__print__     Tick:    19 |Action: Execute instruction (HLT)                                                   |Interrupt: halt  |ACC:         10 |AR:    15 |IP:    16 |DR: "index":   15, "opcode": "HLT ", "value":          0                          |SP:  2044 |CR: OpCode: HLT , Value:          0, Relative: None       |PS:  0
+INFO    control_unit:__print__     Tick:    20 |Action: Halt                                                                        |Interrupt: halt  |ACC:         10 |AR:    15 |IP:    16 |DR: "index":   15, "opcode": "HLT ", "value":          0                          |SP:  2044 |CR: OpCode: HLT , Value:          0, Relative: None       |PS:  0
+Output: [10]
+Instruction number: 7
+Ticks: 20
+```
+
+Пример проверки исходного кода:
+
+```
+> pytest . -v --update-goldens                                                                                                                                                                               
+================================================================================================================ test session starts ================================================================================================================
+platform win32 -- Python 3.12.0, pytest-8.1.2, pluggy-1.5.0 -- C:\IMPRIMIR\2kurs\4Sem\AK\Lab3\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\IMPRIMIR\2kurs\4Sem\AK\Lab3
+configfile: pyproject.toml
+plugins: golden-0.2.2
+collected 5 items                                                                                                                                                                                                                                    
+
+golden_test.py::test_translator_and_machine[golden/cat.yml] PASSED                                                                                                                                                                             [ 20%]
+golden_test.py::test_translator_and_machine[golden/hellouser.yml] PASSED                                                                                                                                                                       [ 40%]
+golden_test.py::test_translator_and_machine[golden/helloworld.yml] PASSED                                                                                                                                                                      [ 60%]
+golden_test.py::test_translator_and_machine[golden/prob2.yml] PASSED                                                                                                                                                                           [ 80%]
+golden_test.py::test_translator_and_machine[golden/sum.yml] PASSED                                                                                                                                                                             [100%]
+
+================================================================================================================= 5 passed in 0.76s ================================================================================================================= 
+> ruff format --check         
+8 files already formatted
+```
+
+
+```
+| ФИО                   | алг          | LoC | code инстр. | инстр. | такт. |
+| Маликов Глеб Игоревич | cat          | 15  | 9           | 32     | 96    |
+| Маликов Глеб Игоревич | hellouser    | 34  | 28          | 81     | 236   |
+| Маликов Глеб Игоревич | helloworld   | 17  | 23          | 80     | 226   |
+| Маликов Глеб Игоревич | prob2        | 49  | 27          | 514    | 1509  |
+| Маликов Глеб Игоревич | sum          | 22  | 10          | 7      | 20    |
+```
