@@ -263,7 +263,7 @@ _start
 
 Реализован в модуле [data_path.py](data_path.py).
 
-![data_path.drawio.svg](data_path.drawio.svg)
+![data_path.drawio.svg](schemes/data_path.drawio.svg)
 Синим цветом указаны сигналы, которые из ALU, для удобства отображения.
 
 Класс `data_path` реализует управление памятью и регистрами процессора.
@@ -278,7 +278,7 @@ _start
 
 Реализован в модуле [control_unit.py](control_unit.py).
 
-![control_unit.drawio.svg](control_unit.drawio.svg)
+![control_unit.drawio.svg](schemes/control_unit.drawio.svg)
 
 Класс `control_unit` реализует управление процессором.
  - `load_program`: Загружает программу в память, устанавливая адреса начала программы и программы прерываний.
