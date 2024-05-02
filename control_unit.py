@@ -2,7 +2,7 @@ import logging
 from enum import Enum
 
 from errors import UnknownOpcodeError
-from isa import IN_ADDR, INTERRUPT_START, OUT_ADDR, CommandTypes, OpCode
+from isa import IN_ADDR, INTERRUPT_START, OUT_ADDR, CommandTypes, OpCode, INTERRUPT_RETURN
 from translator import Instruction
 
 logging.basicConfig(
@@ -73,6 +73,15 @@ class ControlUnit:
             relative = instruction.get("relative", None)
             self.data_path.memory[index] = Instruction(index, opcode, value, relative)
 
+    def __print__(self, string=""):
+        info = (
+            f"Tick: {self._tick:5} |"
+            f"Action: {string:75} |"
+            f"Interrupt: {self.interrupt.value:5} |"
+            f"{self.data_path}"
+        )
+        logger.info(info)
+
     def tick(self, string=""):
         self.__print__(string)
         self._tick += 1
@@ -84,14 +93,21 @@ class ControlUnit:
         if self._tick >= self.limit:
             self.interrupt = InterruptType.ERROR
 
-    def __print__(self, string=""):
-        info = (
-            f"Tick: {self._tick:5} |"
-            f"Action: {string:75} |"
-            f"Interrupt: {self.interrupt.value:5} |"
-            f"{self.data_path}"
-        )
-        logger.info(info)
+    def execute_instruction(self):
+        info = ""
+        self.data_path.ps = self.data_path.alu.get_flags_as_int()
+        try:
+            opcode = self.data_path.cr.opcode
+            if opcode in self.opcode_methods:
+                info = self.opcode_methods[opcode]()
+            else:
+                raise UnknownOpcodeError(opcode)
+        except IndexError or ValueError as _:
+            logger.exception(f"Exception while executing instruction: {self.data_path.cr}")
+            self.interrupt = InterruptType.ERROR
+
+        self.data_path.ps = self.data_path.alu.get_flags_as_int()
+        return info
 
     def instruction_step(self):
         try:
@@ -115,9 +131,9 @@ class ControlUnit:
 
         if self.interrupt == InterruptType.INPUT:
             self.__print__(f"Input: {self.data_path.memory[IN_ADDR]}")
-            self.data_path.memory[self.data_path.sp] = self.data_path.ip
+            self.data_path.memory[INTERRUPT_RETURN] = self.data_path.ip
             self.data_path.ip = self.data_path.memory[INTERRUPT_START]
-            self.tick("Input interruption (IP -> mem[SP], mem[INTERRUPT_START] -> IP)")
+            self.tick("Input interr (IP -> mem[INTERRUPT_RETURN], mem[INTERRUPT_START] -> IP)")
             self.run(InterruptType.INPUT)
 
         elif self.interrupt == InterruptType.ERROR:
@@ -128,21 +144,6 @@ class ControlUnit:
             self.run()
 
         return self.data_path.output, self._tick, self.instruction_counter
-
-    def execute_instruction(self):
-        info = ""
-        try:
-            opcode = self.data_path.cr.opcode
-            if opcode in self.opcode_methods:
-                info = self.opcode_methods[opcode]()
-            else:
-                raise UnknownOpcodeError(opcode)
-        except IndexError or ValueError as _:
-            logger.exception(f"Exception while executing instruction: {self.data_path.cr}")
-            self.interrupt = InterruptType.ERROR
-
-        self.data_path.ps = self.data_path.alu.get_flags_as_int()
-        return info
 
     def execute_load(self):
         self.data_path.alu.clr()
@@ -158,9 +159,9 @@ class ControlUnit:
         return "SAVE: ACC -> mem[AR]"
 
     def execute_push(self):
-        self.data_path.sp -= 1
         self.data_path.memory[self.data_path.sp] = Instruction(self.data_path.sp, OpCode.NOP, self.data_path.acc)
-        return "PUSH: SP - 1 -> SP, ACC -> mem[SP]"
+        self.data_path.sp -= 1
+        return "PUSH: ACC -> mem[SP], SP - 1 -> SP"
 
     def execute_pop(self):
         self.data_path.acc = self.data_path.memory[self.data_path.sp].value
@@ -201,37 +202,37 @@ class ControlUnit:
         return "SHR: ACC >> 1 -> ACC"
 
     def execute_jmn(self):
-        if self.data_path.alu.get_flags_as_int() >= 4:
+        if self.data_path.ps >= 4:
             self.data_path.ip = self.data_path.dr.index
         return "JMN: N: DR -> IP"
 
     def execute_jmnn(self):
-        if self.data_path.alu.get_flags_as_int() < 4:
+        if self.data_path.ps < 4:
             self.data_path.ip = self.data_path.dr.index
         return "JMNN: NOT N: DR -> IP"
 
     def execute_jmz(self):
-        if self.data_path.alu.get_flags_as_int() in [2, 3, 7]:
+        if self.data_path.ps in [2, 3, 7]:
             self.data_path.ip = self.data_path.dr.index
         return "JMZ: Z: DR -> IP"
 
     def execute_jmnz(self):
-        if self.data_path.alu.get_flags_as_int() not in [2, 3, 7]:
+        if self.data_path.ps not in [2, 3, 7]:
             self.data_path.ip = self.data_path.dr.index
         return "JMNZ: NOT Z: DR -> IP"
 
     def execute_jmc(self):
-        if self.data_path.alu.get_flags_as_int() in [1, 3, 5, 7]:
+        if self.data_path.ps in [1, 3, 5, 7]:
             self.data_path.ip = self.data_path.dr.index
         return "JMC: C: DR -> IP"
 
     def execute_jmnc(self):
-        if self.data_path.alu.get_flags_as_int() not in [1, 3, 5, 7]:
+        if self.data_path.ps not in [1, 3, 5, 7]:
             self.data_path.ip = self.data_path.dr.index
         return "JMNC: NOT C: DR -> IP"
 
     def execute_clr(self):
-        self.data_path.alu.clr()
+        self.data_path.acc = self.data_path.alu.clr()
         return "CLR: ALU"
 
     def execute_hlt(self):
@@ -239,7 +240,7 @@ class ControlUnit:
         return "HLT"
 
     def execute_iret(self):
-        self.data_path.ip = self.data_path.memory[self.data_path.sp]
+        self.data_path.ip = self.data_path.memory[INTERRUPT_RETURN]
         self.interrupt = InterruptType.NONE
         return "IRET: mem[INTERRUPT_START] -> IP"
 

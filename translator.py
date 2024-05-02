@@ -40,7 +40,7 @@ class Instructions:
             raise InvalidInstructionError(instruction)
         if instruction.index in [i.index for i in self.list]:
             raise MemoryAlreadyAllocatedError(instruction.index)
-        if instruction.index > MAX_ADDRESS - 3:  # to avoid stack and input/output addresses
+        if instruction.index > MAX_ADDRESS - 4:  # to avoid stack and input/output addresses
             raise MemoryOutOfRangeError(instruction.index)
         self.list.append(instruction)
         self.last_address += 1
@@ -118,12 +118,9 @@ def process_data_line(line, instructions):
 def process_string_value(line, value, instructions):
     value = value[1:-1]
     variables[line[0].strip()] = instructions.last_address
-    for i in range(len(value)):
-        if value[i] == value[-1]:
-            instructions.append(Instruction(instructions.last_address, OpCode["NOP"], f"'{value[i]}'"))
-            instructions.append(Instruction(instructions.last_address, OpCode["NOP"], "'\\0'"))
-        else:
-            instructions.append(Instruction(instructions.last_address, OpCode["NOP"], f"'{value[i]}'"))
+    for char in value:
+        instructions.append(Instruction(instructions.last_address, OpCode["NOP"], f"'{char}'"))
+    instructions.append(Instruction(instructions.last_address, OpCode["NOP"], "'\\0'"))
 
 
 def process_numeric_value(line, instructions, value):

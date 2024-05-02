@@ -36,18 +36,16 @@ class DataPath:
         """
         self.ar = self.ip
         try:
-            self.dr = self.memory[self.ar]
+            self.cr = self.memory[self.ip]
         except IndexError:
             raise InstructionPointerError(self.ip)
-        self.cr = self.dr  # Command Register will hold the instruction
         self.ip += 1
 
     def read_operand(self):
         """
         Read the operand from memory
         """
-        self.dr = self.cr.value
-        self.ar = self.dr
+        self.ar = self.cr.value
         try:
             self.dr = self.memory[self.ar]
         except IndexError:

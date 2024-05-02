@@ -1,6 +1,5 @@
 section .data
 A: 1
-Z: 0
 
 section .code
 _start

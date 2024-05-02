@@ -1,34 +1,74 @@
 section .data
+index 0
+question: 'What is your name?'
+qi: 0
+
+index 30
 hello: 'Hello '
+hi: 30
+
 exclamation: '!'
-count: 0
+
+stack: 2043 ; address of stack start
+
 
 section .code
 
-_excl
+_exclamation
     LOAD exclamation
     SAVE OUT
     HLT
 
 _userloop
+    SAVE OUT
+    LOAD stack
+    DEC
+    SAVE stack
+    LOAD $stack
+    JMNZ userloop
+    CLR
+    JMP exclamation
+
+_user
+    LOAD $stack
     JMP userloop
 
-_helloloop
+
+_hello
     SAVE OUT
-    LOAD count
+    LOAD hi
     INC
-    SAVE count
-    LOAD $count
-    JMNZ helloloop
+    SAVE hi
+    LOAD $hi
+    JMNZ hello
     CLR
-    JMP userloop
+    JMP user
+
+
+_greeting
+    LOAD $hi
+    JMP hello
+
+_inputloop
+    JMNZ inputloop
+    JMP greeting
+
+_questionloop
+    SAVE OUT
+    LOAD qi
+    INC
+    SAVE qi
+    LOAD $qi
+    JMNZ questionloop
+    CLR
+    INC
+    JMP inputloop
 
 _start
-    LOAD $count
-    JMP helloloop
+    LOAD $qi
+    JMP questionloop
 
 _int
     LOAD IN
-    JMZ excl
-    SAVE OUT
+    PUSH
     IRET
