@@ -66,7 +66,7 @@ class Instruction:
         self.value = value
         self.relative = relative
 
-    def __str__(self):
+    def __str__(self):  # This representation is used to generate the JSON file
         base_str = f'"index": {self.index:4}, ' f'"opcode": "{self.opcode:4}", ' f'"value": {self.value:10}'
         if self.relative is not None:
             base_str += f', "relative": {self.relative!s:5}'

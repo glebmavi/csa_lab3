@@ -2,7 +2,7 @@ import logging
 from enum import Enum
 
 from errors import UnknownOpcodeError
-from isa import IN_ADDR, INTERRUPT_RETURN, INTERRUPT_START, OUT_ADDR, CommandTypes, OpCode
+from isa import IN_ADDR, INT_RETURN, INT_START, OUT_ADDR, CommandTypes, OpCode
 from translator import Instruction
 
 logging.basicConfig(
@@ -65,7 +65,7 @@ class ControlUnit:
         Program is a list of Instruction objects and a start address at ht beginning.
         """
         self.data_path.ip = program[0]["start_address"]
-        self.data_path.memory[INTERRUPT_START] = program[1]["interrupt_address"]
+        self.data_path.memory[INT_START] = program[1]["interrupt_address"]
         for instruction in program[2:]:
             index: int = instruction["index"]
             opcode = OpCode[instruction["opcode"].strip().upper()]
@@ -76,7 +76,7 @@ class ControlUnit:
     def __print__(self, string=""):
         info = (
             f"Tick: {self._tick:5} |"
-            f"Action: {string:75} |"
+            f"Action: {string:60} |"
             f"Interrupt: {self.interrupt.value:5} |"
             f"{self.data_path}"
         )
@@ -137,9 +137,9 @@ class ControlUnit:
 
         if self.interrupt == InterruptType.INPUT:
             self.__print__(f"Input: {self.data_path.memory[IN_ADDR].value}")
-            self.data_path.memory[INTERRUPT_RETURN] = self.data_path.ip
-            self.data_path.ip = self.data_path.memory[INTERRUPT_START]
-            self.tick("Input interr (IP -> mem[INTERRUPT_RETURN], mem[INTERRUPT_START] -> IP)")
+            self.data_path.memory[INT_RETURN] = self.data_path.ip
+            self.data_path.ip = self.data_path.memory[INT_START]
+            self.tick("Input interr (IP -> mem[INT_RETURN], mem[INT_START] -> IP)")
             self.run(InterruptType.INPUT)
 
         elif self.interrupt == InterruptType.ERROR:
@@ -243,7 +243,7 @@ class ControlUnit:
         return ["HLT"]
 
     def execute_iret(self):
-        self.data_path.ip = self.data_path.memory[INTERRUPT_RETURN]
+        self.data_path.ip = self.data_path.memory[INT_RETURN]
         self.interrupt = InterruptType.NONE
         return ["IRET: mem[INTERRUPT_START] -> IP"]
 
