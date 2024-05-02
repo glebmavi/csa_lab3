@@ -8,7 +8,6 @@ hello: 'Hello '
 hi: 30
 
 exclamation: '!'
-
 stack: 2043 ; address of stack start
 
 
@@ -33,7 +32,6 @@ _user
     LOAD $stack
     JMP userloop
 
-
 _hello
     SAVE OUT
     LOAD hi
@@ -43,7 +41,6 @@ _hello
     JMNZ hello
     CLR
     JMP user
-
 
 _greeting
     LOAD $hi

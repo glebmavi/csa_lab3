@@ -94,7 +94,7 @@ class ControlUnit:
             self.interrupt = InterruptType.ERROR
 
     def execute_instruction(self):
-        info = ""
+        info = []
         self.data_path.ps = self.data_path.alu.get_flags_as_int()
         try:
             opcode = self.data_path.cr.opcode
@@ -112,14 +112,20 @@ class ControlUnit:
     def instruction_step(self):
         try:
             self.data_path.fetch_instruction()
-            self.tick("Fetch instruction (IP -> AR, IP + 1 -> IP, mem[AR] -> DR, DR -> CR)")
+            self.tick("Fetch instruction (IP -> AR, mem[IP] -> CR)")
+            self.tick("Fetch Instruction (IP + 1 -> IP)")
 
             if self.data_path.cr.opcode.get_type() in [CommandTypes.DATA, CommandTypes.JUMP]:
                 self.data_path.read_operand()
-                self.tick("Read operand (CR[addr] -> DR, DR -> AR, mem[AR] -> DR)")
+                self.tick("Read operand (CR[addr] -> AR)")
+                self.tick("Read operand (mem[AR] -> DR)")
+                if self.data_path.cr.relative:
+                    self.tick("Read operand (Relative addressing: DR -> AR)")
+                    self.tick("Read operand (mem[AR] -> DR)")
 
             info = self.execute_instruction()
-            self.tick(f"Execute instruction ({info})")
+            for i in info:
+                self.tick(f"Execute instruction ({i})")
         except IndexError or ValueError as _:
             logger.exception(f"Exception during instruction: {self.data_path.cr}")
             self.interrupt = InterruptType.ERROR
@@ -130,7 +136,7 @@ class ControlUnit:
             self.instruction_counter += 1
 
         if self.interrupt == InterruptType.INPUT:
-            self.__print__(f"Input: {self.data_path.memory[IN_ADDR]}")
+            self.__print__(f"Input: {self.data_path.memory[IN_ADDR].value}")
             self.data_path.memory[INTERRUPT_RETURN] = self.data_path.ip
             self.data_path.ip = self.data_path.memory[INTERRUPT_START]
             self.tick("Input interr (IP -> mem[INTERRUPT_RETURN], mem[INTERRUPT_START] -> IP)")
@@ -146,103 +152,100 @@ class ControlUnit:
         return self.data_path.output, self._tick, self.instruction_counter
 
     def execute_load(self):
-        self.data_path.alu.clr()
-        self.data_path.acc = self.data_path.dr.value
-        self.data_path.alu.set_flags(self.data_path.acc)
-        return "LOAD: DR -> ACC"
+        self.data_path.update_acc(self.data_path.dr.value)
+        return ["LOAD: DR -> ACC, PS"]
 
     def execute_save(self):
         self.data_path.memory[self.data_path.ar] = Instruction(self.data_path.ar, OpCode.NOP, self.data_path.acc)
         if self.data_path.ar == OUT_ADDR:
             self.data_path.output.append(self.data_path.acc)
             self.__print__(f"Output: {self.data_path.acc}")
-        return "SAVE: ACC -> mem[AR]"
+        return ["SAVE: ACC -> mem[AR]"]
 
     def execute_push(self):
         self.data_path.memory[self.data_path.sp] = Instruction(self.data_path.sp, OpCode.NOP, self.data_path.acc)
         self.data_path.sp -= 1
-        return "PUSH: ACC -> mem[SP], SP - 1 -> SP"
+        return ["PUSH: ACC -> mem[SP]", "PUSH: SP - 1 -> SP"]
 
     def execute_pop(self):
-        self.data_path.acc = self.data_path.memory[self.data_path.sp].value
+        self.data_path.update_acc(self.data_path.memory[self.data_path.sp].value)
         self.data_path.sp += 1
-        self.data_path.alu.set_flags(self.data_path.acc)
-        return "POP: mem[SP] -> ACC, SP + 1 -> SP"
+        return ["POP: mem[SP] -> ACC, PS", "POP: SP + 1 -> SP"]
 
     def execute_inc(self):
-        self.data_path.acc = self.data_path.alu.add(self.data_path.acc, 1)
-        return "INC: ACC + 1 -> ACC"
+        self.data_path.update_acc(self.data_path.alu.add(self.data_path.acc, 1))
+        return ["INC: ACC + 1 -> ACC, PS"]
 
     def execute_dec(self):
-        self.data_path.acc = self.data_path.alu.sub(self.data_path.acc, 1)
-        return "DEC: ACC - 1 -> ACC"
+        self.data_path.update_acc(self.data_path.alu.sub(self.data_path.acc, 1))
+        return ["DEC: ACC - 1 -> ACC, PS"]
 
     def execute_add(self):
-        self.data_path.acc = self.data_path.alu.add(self.data_path.acc, self.data_path.dr.value)
-        return "ADD: ACC + DR -> ACC"
+        self.data_path.update_acc(self.data_path.alu.add(self.data_path.acc, self.data_path.dr.value))
+        return ["ADD: ACC + DR -> ACC, PS"]
 
     def execute_sub(self):
-        self.data_path.acc = self.data_path.alu.sub(self.data_path.acc, self.data_path.dr.value)
-        return "SUB: ACC - DR -> ACC"
+        self.data_path.update_acc(self.data_path.alu.sub(self.data_path.acc, self.data_path.dr.value))
+        return ["SUB: ACC - DR -> ACC, PS"]
 
     def execute_cmp(self):
-        self.data_path.alu.cmp(self.data_path.acc, self.data_path.dr.value)
-        return "CMP: ACC - DR -> PS"
+        self.data_path.alu.cmp(self.data_path.acc, self.data_path.dr.value)  # Only sets flags, acc is not updated
+        return ["CMP: ACC - DR -> PS"]
 
     def execute_jmp(self):
         self.data_path.ip = self.data_path.dr.index
-        return "JMP: DR -> IP"
+        return ["JMP: DR -> IP"]
 
     def execute_shl(self):
-        self.data_path.acc = self.data_path.alu.shl(self.data_path.acc)
-        return "SHL: ACC << 1 -> ACC"
+        self.data_path.update_acc(self.data_path.alu.shl(self.data_path.acc), update_flags=False)  # shl sets flags
+        return ["SHL: ACC << 1 -> ACC, PS"]
 
     def execute_shr(self):
-        self.data_path.acc = self.data_path.alu.shr(self.data_path.acc)
-        return "SHR: ACC >> 1 -> ACC"
+        self.data_path.update_acc(self.data_path.alu.shr(self.data_path.acc), update_flags=False)  # shr sets flags
+        return ["SHR: ACC >> 1 -> ACC, PS"]
 
     def execute_jmn(self):
-        if self.data_path.ps >= 4:
+        if self.data_path.ps & 0b100:
             self.data_path.ip = self.data_path.dr.index
-        return "JMN: N: DR -> IP"
+        return ["JMN: N: DR -> IP"]
 
     def execute_jmnn(self):
-        if self.data_path.ps < 4:
+        if not (self.data_path.ps & 0b100):
             self.data_path.ip = self.data_path.dr.index
-        return "JMNN: NOT N: DR -> IP"
+        return ["JMNN: NOT N: DR -> IP"]
 
     def execute_jmz(self):
-        if self.data_path.ps in [2, 3, 7]:
+        if self.data_path.ps & 0b010:
             self.data_path.ip = self.data_path.dr.index
-        return "JMZ: Z: DR -> IP"
+        return ["JMZ: Z: DR -> IP"]
 
     def execute_jmnz(self):
-        if self.data_path.ps not in [2, 3, 7]:
+        if not (self.data_path.ps & 0b010):
             self.data_path.ip = self.data_path.dr.index
-        return "JMNZ: NOT Z: DR -> IP"
+        return ["JMNZ: NOT Z: DR -> IP"]
 
     def execute_jmc(self):
-        if self.data_path.ps in [1, 3, 5, 7]:
+        if self.data_path.ps & 0b001:
             self.data_path.ip = self.data_path.dr.index
-        return "JMC: C: DR -> IP"
+        return ["JMC: C: DR -> IP"]
 
     def execute_jmnc(self):
-        if self.data_path.ps not in [1, 3, 5, 7]:
+        if not (self.data_path.ps & 0b001):
             self.data_path.ip = self.data_path.dr.index
-        return "JMNC: NOT C: DR -> IP"
+        return ["JMNC: NOT C: DR -> IP"]
 
     def execute_clr(self):
-        self.data_path.acc = self.data_path.alu.clr()
-        return "CLR: ALU"
+        self.data_path.update_acc(self.data_path.alu.clr(), update_flags=False)  # clr sets flags
+        return ["CLR: 0 -> ACC, PS"]
 
     def execute_hlt(self):
         self.interrupt = InterruptType.HALT
-        return "HLT"
+        return ["HLT"]
 
     def execute_iret(self):
         self.data_path.ip = self.data_path.memory[INTERRUPT_RETURN]
         self.interrupt = InterruptType.NONE
-        return "IRET: mem[INTERRUPT_START] -> IP"
+        return ["IRET: mem[INTERRUPT_START] -> IP"]
 
     def execute_nop(self):
-        pass
+        return ["NOP"]

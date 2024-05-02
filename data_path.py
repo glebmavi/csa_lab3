@@ -52,6 +52,16 @@ class DataPath:
             raise AddressRegisterError(self.ar)
         if self.cr.relative:
             try:
-                self.dr = self.memory[self.dr.value]
+                self.ar = self.dr.value
+                self.dr = self.memory[self.ar]
             except IndexError:
                 raise AddressRegisterError(self.dr.value)
+
+    def update_acc(self, value, update_flags=True):
+        """
+        Update the accumulator with the value from the data register
+        """
+        self.acc = value
+        if update_flags:
+            self.alu.set_flags(self.acc)
+        self.ps = self.alu.get_flags_as_int()

@@ -7,8 +7,11 @@ _start
 _loop
     JMNZ loop
     HLT
+
+_ret
+    IRET
 _int
     LOAD IN
-    JMZ loop
+    JMZ ret
     SAVE OUT
     IRET

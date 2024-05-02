@@ -10,7 +10,7 @@ def main(code_file, input_file):
     with open(input_file) as file:
         input_data = eval(file.read())
     data_path = DataPath()
-    control_unit = ControlUnit(data_path, code, input_data, 2000)
+    control_unit = ControlUnit(data_path, code, input_data, 3000)
     output, ticks, instructions = control_unit.run()
     print(f"Output: {output}\nInstruction number: {instructions}\nTicks: {ticks}")
 
