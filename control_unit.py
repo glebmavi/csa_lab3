@@ -2,7 +2,7 @@ import logging
 from enum import Enum
 
 from errors import UnknownOpcodeError
-from isa import IN_ADDR, INTERRUPT_START, OUT_ADDR, CommandTypes, OpCode, INTERRUPT_RETURN
+from isa import IN_ADDR, INTERRUPT_RETURN, INTERRUPT_START, OUT_ADDR, CommandTypes, OpCode
 from translator import Instruction
 
 logging.basicConfig(
@@ -149,7 +149,7 @@ class ControlUnit:
         elif self.interrupt == InterruptType.NONE:
             self.run()
 
-        return self.data_path.output, self._tick, self.instruction_counter
+        return self.data_path.output, self._tick + 1, self.instruction_counter
 
     def execute_load(self):
         self.data_path.update_acc(self.data_path.dr.value)

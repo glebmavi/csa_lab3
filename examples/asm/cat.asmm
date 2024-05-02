@@ -5,13 +5,13 @@ section .code
 _start
     LOAD A
 _loop
-    JMNZ loop
+    JMNZ _loop
     HLT
 
 _ret
     IRET
 _int
     LOAD IN
-    JMZ ret
+    JMZ _ret
     SAVE OUT
     IRET

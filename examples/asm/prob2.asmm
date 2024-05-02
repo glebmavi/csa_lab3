@@ -21,15 +21,15 @@ _check
     LOAD second ; \
     CMP limit ;   / if second > limit
 
-    JMNN print
+    JMNN _print
 
-    JMP iteration
+    JMP _iteration
 
 _sum
     LOAD summ ;  \
     ADD second ;  } summ += second
     SAVE summ ;  /
-    JMP check
+    JMP _check
 
 index 200
 _start
@@ -43,7 +43,7 @@ _start
     SAVE first ;  / first = second
 
     SHR ;      \
-    JMNC sum ; / if second % 2 == 0: sum()
-    JMP check
+    JMNC _sum ; / if second % 2 == 0: sum()
+    JMP _check
 
 _int

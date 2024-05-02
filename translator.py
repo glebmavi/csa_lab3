@@ -156,11 +156,11 @@ def process_instruction_line(line, instructions):
 
 
 def process_label_line(line, instructions, start_found, start_addr, interrupt_found, interrupt_addr):
-    label = line[0][1:]
-    if label == "start":
+    label = line[0]
+    if label == "_start":
         start_found = True
         start_addr = instructions.last_address
-    elif label == "int":
+    elif label == "_int":
         interrupt_found = True
         interrupt_addr = instructions.last_address
 

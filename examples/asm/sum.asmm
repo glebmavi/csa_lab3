@@ -17,6 +17,6 @@ _start    ; entry point
     LOAD A
     ADD $B  ; adds the value of A with the reference of B
     SAVE C ; save the result in C
-    JMP print ; jump to print
+    JMP _print ; jump to print
 
 _int ; no need to implement

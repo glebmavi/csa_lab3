@@ -12,6 +12,6 @@ _loop
     INC
     SAVE count
     LOAD $count
-    JMNZ loop
+    JMNZ _loop
     HLT
 _int
