@@ -95,7 +95,6 @@ class ControlUnit:
 
     def execute_instruction(self):
         info = []
-        self.data_path.ps = self.data_path.alu.get_flags_as_int()
         try:
             opcode = self.data_path.cr.opcode
             if opcode in self.opcode_methods:
